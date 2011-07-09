@@ -1,7 +1,9 @@
 -module(enodeman_api).
 -export([
     connect/2,
-    node_status/2
+    node_status/2,
+    node_metrics/0,
+    proc_metrics/0
 ]).
 
 %  :8080/<NODE>/<FUNC>?a=b&c=d
@@ -14,3 +16,10 @@ connect(Node, Params) ->
 
 node_status(Pid, Params) ->
     enodeman_node_controller:node_status(Pid, Params).
+
+node_metrics() ->
+    enodeman_node_metrics:get_descr().
+
+proc_metrics() ->
+    []. %FIXME: make the same as with node_metrics
+    

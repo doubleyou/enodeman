@@ -72,46 +72,29 @@ terminate(_Reason, _State) ->
 
 %%%%%%%%%%%%%%%%%%% Internal functions %%%%%%%%%%%%%%%%
 
-renew_metrics(#state{node = Node, metrics = Ms} = State) ->
+renew_metrics(#state{node = Node} = State) ->
     Interval = enodeman_util:get_env(node_metrics_update_interval),
     erlang:send_after(Interval, self(), renew_metrics),
-    Params = [
-        %{io, {erlang, statistics, [io]}},
-        %{garbage_collection, {erlang, statistics, [garbage_collection]}},
-        {memory, {erlang, memory, []}},
-        % TODO: port_to_list -> binary or length(ports)
-        %{ports, {erlang, ports, []}}, 
-        {process_count, {erlang, system_info, [process_count]}},
-        %{reductions, {erlang, statistics, [reductions]}},
-        %{runtime, {erlang, statistics, [runtime]}},
-        {wordsize, {erlang, system_info, [wordsize]}}
-    ],
-    Updates = [{K, update_metric(Node, P, proplists:get_value(K, Ms))}
-        || {K, P} <- Params],
-    State#state{
-        metrics = repl_metrics_values(Updates, State)
-    }.
+    AllMetrics = enodeman_node_metrics:all_metrics(),
+    UserMetrics = enodeman_util:get_env(node_metrics),
+
+    ToCheck = [{K,V} || {K,V} <- AllMetrics, lists:member(K, UserMetrics) ],
+    Updates = [{K, update_metric(Node, P)} || {K, P} <- ToCheck],
+    State#state{ metrics = Updates }.
 
 renew_procs(#state{node = _Node, processes = _Ps} = State) ->
     Interval = enodeman_util:get_env(processes_update_interval),
     erlang:send_after(Interval, self(), renew_procs),
     State.
 
-update_metric(Node, {M, F, A}, OldValue) ->
+update_metric(Node, {M, F, A}) ->
     case rpc:call(Node, M, F, A) of
         {badrpc, Reason} ->
             enodeman_utils:warning(
                 "error while doing rpc:call(~p,~p,~p,~p) ->~n~p~n",
                 [Node, M, F, A, Reason]
             ),
-            OldValue;
+            undefined;
         V ->
             V
     end.
-
-repl_metrics_values(Values, #state{metrics=M}) ->
-    lists:foldl(
-        fun ({K,V}, Acc) -> lists:keystore(K, 1, Acc, {K,V});
-            (_, Acc) -> Acc
-        end, M, Values).
-

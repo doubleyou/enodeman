@@ -28,16 +28,21 @@ handle_request(Req, Path) ->
 
 handle_request(Req, "/" ++ Path, Params) ->
     try
-        Result = case re:split(Path, "\/", [{return, list}]) of
-            [Node] ->
-                enodeman_api:connect(Node, Params);
-            [Node, Action] ->
-                enodeman_api:connect(Node, Params), %TODO: remove it?
-                Fun = list_to_atom(Action),
-                Pid = enodeman_nodes:node_to_pid(Node),
-                enodeman_api:Fun(Pid, Params)
-        end,
+        Words = re:split(Path, "\/", [{return, list}]),
+        Result = process_path_request(Words, Params),
         Req:ok({"application/json", mochijson2:encode(Result)})
     catch 
         _:{json_encode, _} -> Req:ok("oops, wrong JSON")
     end.
+
+process_path_request(["node_metrics"],_) ->
+    enodeman_api:node_metrics();
+process_path_request(["proc_metrics"],_) ->
+    enodeman_api:proc_metrics();
+process_path_request([Node], Params) ->
+    enodeman_api:connect(Node, Params);
+process_path_request([Node, Action], Params) ->
+    enodeman_api:connect(Node, Params), %TODO: remove it?
+    Fun = list_to_atom(Action),
+    Pid = enodeman_nodes:node_to_pid(Node),
+    enodeman_api:Fun(Pid, Params).
