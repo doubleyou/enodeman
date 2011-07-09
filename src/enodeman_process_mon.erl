@@ -46,7 +46,6 @@ code_change(_OldVsn, State, _Extra) ->
 terminate(_Reason, _State) ->
     ok.
 
-
 renew_proc_info(#state{ pid = Pid }, Props) ->
     Interval = enodeman_util:get_env(process_metrics_update_interval),
     erlang:send_after(Interval, self(), renew_proc_info),
@@ -54,7 +53,7 @@ renew_proc_info(#state{ pid = Pid }, Props) ->
             lists:member(K, Props)
         end,
         enodeman_util:get_env(procs_metrics_spec)),
-    [{K, update_proc_metrics(Pid, V)} || {K, V} <- Params].
+    [{K, update_proc_metrics(Pid, K)} || {K, _, _} <- Params].
 
 update_proc_metrics(Pid, Type) ->
     process_info(Pid, Type).
