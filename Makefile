@@ -9,3 +9,7 @@ first:
 
 up:
 	./rebar update-deps
+
+.PHONY:tags
+tags:
+	ctags -R
