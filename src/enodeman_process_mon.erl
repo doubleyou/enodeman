@@ -53,10 +53,7 @@ renew_proc_info(#state{ pid = Pid }, Props) ->
             lists:member(K, Props)
         end,
         enodeman_util:get_env(procs_metrics_spec)),
-    [{K, update_proc_metrics(Pid, K)} || {K, _, _} <- Params].
-
-update_proc_metrics(Pid, Type) ->
-    process_info(Pid, Type).
+    [{K, process_info(Pid, K)} || {K, _, _} <- Params].
 
 proc_metrics_all() ->
     [current_function, initial_call, status, message_queue_len, priority, reductions, memory, backtrace].
