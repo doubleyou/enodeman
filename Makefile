@@ -1,11 +1,11 @@
 all:
-	rebar compile skip_deps=true
+	./rebar compile skip_deps=true
 
 full:
-	rebar compile
+	./rebar compile
 
 first:
-	rebar get-deps compile
+	./rebar get-deps compile
 
 up:
-	rebar update-deps
+	./rebar update-deps

@@ -14,9 +14,9 @@ handle_request(Req) ->
     handle_request(Req, Req:get(path)).
 
 handle_request(Req, "/") ->
-    Req:serve_file("index.html", "priv");
-handle_request(Req, "/js") ->
-    Req:serve_file("enodeman.js", "priv");
+    handle_request(Req, "/www/index.html");
+handle_request(Req, "/www/" ++ File) ->
+    Req:serve_file(File, "priv/www");
 handle_request(Req, "/favicon.ico") ->
     Req:ok({"image/x-icon", ""});
 handle_request(Req, Path) ->
