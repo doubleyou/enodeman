@@ -22,7 +22,8 @@ start_link(NodeString, Cookie) ->
 
 init([NodeString, Cookie]) ->
     Node = list_to_atom(NodeString),
-    erlang:set_cookie(node(), Cookie),
+    error_logger:format("~p~n", [Cookie]),
+    Cookie == [] orelse erlang:set_cookie(node(), Cookie),
     true = net_kernel:connect_node(Node),
     {ok, #state{ node = Node }}.
 

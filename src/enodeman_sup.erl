@@ -24,5 +24,6 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
+    Nodes = ?CHILD(enodeman_nodes, worker),
     Web = ?CHILD(enodeman_web, start, worker),
-    {ok, { {one_for_one, 5, 10}, [Web]} }.
+    {ok, { {one_for_one, 5, 10}, [Nodes, Web]} }.
