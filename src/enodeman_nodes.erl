@@ -19,7 +19,7 @@ node_to_pid(Node, Cookie) when is_atom(Node) ->
 node_to_pid(Node, Cookie) ->
     case lists:keyfind(Node, 1, supervisor:which_children(?MODULE)) of
         {_, Pid, _, _} ->
-            Pid;
+            controller_by_sup(Pid);
         false ->
             {ok, ParentPid} = supervisor:start_child(
                 ?MODULE,
