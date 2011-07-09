@@ -1,4 +1,7 @@
 all:
+	rebar compile skip_deps=true
+
+full:
 	rebar compile
 
 first:
