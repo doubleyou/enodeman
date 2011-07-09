@@ -16,8 +16,12 @@
     parent,
     node,
     cookie,
-    metrics = []
+    metrics = [],
+    processes = []
 }).
+
+-define(NODE_METRICS_UPDATE_INTERVAL, 1000).
+-define(PROCESSES_UPDATE_INTERVAL, 1000).
 
 repl_metrics_values(Values, #state{metrics=M}) ->
     lists:foldl(
@@ -29,6 +33,8 @@ start_link(Parent, NodeString, Cookie) ->
     gen_server:start_link(?MODULE, [Parent, NodeString, Cookie], []).
 
 init([Parent, NodeString, Cookie]) ->
+    erlang:send_after(0, self(), renew_metrics),
+    erlang:send_after(0, self(), renew_procs),
     Node = list_to_atom(NodeString),
     erlang:set_cookie(node(), Cookie),
     true = net_kernel:connect_node(Node),
@@ -38,7 +44,7 @@ init([Parent, NodeString, Cookie]) ->
         node = Node,
         cookie = Cookie
     },
-    {ok, renew_stats(State)}.
+    {ok, State}.
 
 handle_call(_Msg, _From, State) ->
     {noreply, State}.
@@ -46,8 +52,10 @@ handle_call(_Msg, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info(renew_stats, State) ->
-    {noreply, renew_stats(State)};
+handle_info(renew_metrics, State) ->
+    {noreply, renew_metrics(State)};
+handle_info(renew_procs, State) ->
+    {noreply, renew_procs(State)};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -69,18 +77,28 @@ update_metric(Node, {M, F, A}, OldValue) ->
             V
     end.
 
-renew_stats(#state{node = Node, metrics = M} = State) ->
-    erlang:send_after(1000, self(), renew_stats),
+renew_metrics(#state{node = Node, metrics = Ms} = State) ->
+    Interval = enodeman_util:get_env(node_metrics_update_interval),
+    erlang:send_after(Interval, self(), renew_metrics),
     Params = [
-        {memory, {erlang, memory, []}},
-        {runtime, {erlang, statistics, [runtime]}},
-        {reductions, {erlang, statistics, [reductions]}},
+        {avg1, {cpu_sup, avg1, []}},
+        {avg5, {cpu_sup, avg5, []}},
+        {avg15, {cpu_sup, avg15, []}},
         {io, {erlang, statistics, [io]}},
-        %TODO: more clever get proc list
-        {processes, {erlang, processes, []}},
-        {ports, {erlang, ports, []}}],
-    Updates = [{K, update_metric(Node, P, proplists:get_value(K, M))}
+        {garbage_collection, {erlang, statistics, [garbage_collection]}},
+        {memory, {erlang, memory, []}},
+        {ports, {erlang, ports, []}},
+        {process_count, {erlang, system_info, [process_count]}},
+        {reductions, {erlang, statistics, [reductions]}},
+        {runtime, {erlang, statistics, [runtime]}},
+        {wordsize, {erlang, system_info, [wordsize]}}
+    ],
+    Updates = [{K, update_metric(Node, P, proplists:get_value(K, Ms))}
         || {K, P} <- Params],
     State#state{
         metrics = repl_metrics_values(Updates, State)
     }.
+renew_procs(#state{node = _Node, processes = _Ps} = State) ->
+    Interval = enodeman_util:get_env(processes_update_interval),
+    erlang:send_after(Interval, self(), renew_procs),
+    State.
