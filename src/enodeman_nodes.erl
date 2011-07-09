@@ -2,12 +2,17 @@
 -behaviour(supervisor).
 -export([
     start_link/0,
+    node_to_pid/1,
     node_to_pid/2,
     init/1
 ]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+node_to_pid(Node) ->
+    {_, Pid, _, _} = lists:keyfind(Node, 1, supervisor:which_children(?MODULE)),
+    Pid.
 
 node_to_pid(Node, Cookie) when is_atom(Node) ->
     node_to_pid(atom_to_list(Node), Cookie);
