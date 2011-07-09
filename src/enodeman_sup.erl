@@ -10,6 +10,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(CHILD(M, Fun, Type), {M, {M, Fun, []}, permanent, 5000, Type, [M]}).
 
 %% ===================================================================
 %% API functions
@@ -23,4 +24,5 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, []} }.
+    Web = ?CHILD(enodeman_web, start, worker),
+    {ok, { {one_for_one, 5, 10}, [Web]} }.
