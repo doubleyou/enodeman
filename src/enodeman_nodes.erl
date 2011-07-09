@@ -11,8 +11,8 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 node_to_pid(Node) ->
-    {_, Pid, _, _} = lists:keyfind(Node, 1, supervisor:which_children(?MODULE)),
-    Pid.
+    {_, ParentPid, _, _} = lists:keyfind(Node, 1, supervisor:which_children(?MODULE)),
+    controller_by_sup(ParentPid).
 
 node_to_pid(Node, Cookie) when is_atom(Node) ->
     node_to_pid(atom_to_list(Node), Cookie);
@@ -28,10 +28,13 @@ node_to_pid(Node, Cookie) ->
                     {enodeman_node_sup, start_link, [Node, Cookie]},
                     permanent, infinity, supervisor, [enodeman_node_sup]
                 }),
-            Specs = supervisor:which_children(ParentPid),
-            {_, Pid, _, _} = lists:keyfind(enodeman_node_controller, 1, Specs),
-            Pid
+            controller_by_sup(ParentPid)
     end.
+
+controller_by_sup(ParentPid) ->
+    Specs = supervisor:which_children(ParentPid),
+    {_, Pid, _, _} = lists:keyfind(enodeman_node_controller, 1, Specs),
+    Pid.
 
 init(_) ->
     {ok, { {one_for_one, 5, 10}, []}}.
