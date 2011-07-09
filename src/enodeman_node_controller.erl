@@ -1,7 +1,7 @@
 -module(enodeman_node_controller).
 -behaviour(gen_server).
 -export([
-    start_link/2
+    start_link/3
 ]).
 -export([
     init/1,
@@ -13,6 +13,7 @@
 ]).
 
 -record(state, {
+    parent,
     node,
     cookie,
     metrics = []
@@ -24,19 +25,16 @@ repl_metrics_values(Values, #state{metrics=M}) ->
             (_, Acc) -> Acc
         end, M, Values).
 
-get_metric(K, #state{metrics=M}) -> 
-    {K, V} = lists:keyfind(K, 1, M),
-    V.
+start_link(Parent, NodeString, Cookie) ->
+    gen_server:start_link(?MODULE, [Parent, NodeString, Cookie], []).
 
-start_link(NodeString, Cookie) ->
-    gen_server:start_link(?MODULE, [NodeString, Cookie], []).
-
-init([NodeString, Cookie]) ->
+init([Parent, NodeString, Cookie]) ->
     Node = list_to_atom(NodeString),
     erlang:set_cookie(node(), Cookie),
     true = net_kernel:connect_node(Node),
 
     State = #state{
+        parent = Parent,
         node = Node,
         cookie = Cookie
     },
@@ -59,24 +57,30 @@ code_change(_OldVsn, State, _Extra) ->
 terminate(_Reason, _State) ->
     ok.
 
-update_metric({Node, M, F, A}, OldValue) ->
+update_metric(Node, {M, F, A}, OldValue) ->
     case rpc:call(Node, M, F, A) of
-        {badrpc, Reason} -> enodeman_utils:warning(
+        {badrpc, Reason} ->
+            enodeman_utils:warning(
                 "error while doing rpc:call(~p,~p,~p,~p) ->~n~p~n",
-                [Node, M, F, A, Reason]),
+                [Node, M, F, A, Reason]
+            ),
             OldValue;
-        V -> V
+        V ->
+            V
     end.
 
-renew_stats(#state{node = Node} = State) ->
+renew_stats(#state{node = Node, metrics = M} = State) ->
     erlang:send_after(1000, self(), renew_stats),
     Params = [
-        {memory, {Node, erlang, memory, []}},
-        {runtime, {Node, erlang, statistics, [runtime]}},
-        {reductions, {Node, erlang, statistics, [reductions]}},
-        {io, {Node, erlang, statistics, [io]}},
+        {memory, {erlang, memory, []}},
+        {runtime, {erlang, statistics, [runtime]}},
+        {reductions, {erlang, statistics, [reductions]}},
+        {io, {erlang, statistics, [io]}},
         %TODO: more clever get proc list
-        {processes, {Node, erlang, processes, []}},
-        {ports, {Node, erlang, ports, []}}],
-    Updates = [ {K, update_metric(P, get_metric(K, State))} || {K, P} <- Params ],
-    repl_metrics_values(Updates, State).
+        {processes, {erlang, processes, []}},
+        {ports, {erlang, ports, []}}],
+    Updates = [{K, update_metric(Node, P, proplists:get_value(K, M))}
+        || {K, P} <- Params],
+    State#state{
+        metrics = repl_metrics_values(Updates, State)
+    }.

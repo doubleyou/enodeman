@@ -21,13 +21,15 @@ node_to_pid(Node, Cookie) ->
         {_, Pid, _, _} ->
             Pid;
         false ->
-            {ok, Pid} = supervisor:start_child(
+            {ok, ParentPid} = supervisor:start_child(
                 ?MODULE,
                 {
                     Node,
-                    {enodeman_node_controller, start_link, [Node, Cookie]},
-                    permanent, 5000, worker, [enodeman_node_controller]
+                    {enodeman_node_sup, start_link, [Node, Cookie]},
+                    permanent, infinity, supervisor, [enodeman_node_sup]
                 }),
+            Specs = supervisor:which_children(ParentPid),
+            {_, Pid, _, _} = lists:keyfind(enodeman_node_controller, 1, Specs),
             Pid
     end.
 
