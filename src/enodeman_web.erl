@@ -22,14 +22,17 @@ handle_request(Req, "/favicon.ico") ->
 handle_request(Req, Path) ->
     handle_request(Req, Path, Req:parse_qs()).
 
-handle_request(Req, "/" ++ Action, Params) ->
-    %% TODO: write this in a more sophisticated way later, atom leaks
-    Fun = list_to_atom(Action),
+handle_request(Req, "/" ++ Path, Params) ->
     try
-        Result = enodeman_api:Fun(Req, Params),
+        Result = case re:split(Path, "\/", [{return, list}]) of
+            [Node] ->
+                enodeman_api:connect(Node, Params);
+            [Node, Action] ->
+                Fun = list_to_atom(Action),
+                Pid = enodeman_nodes:node_to_pid(Node),
+                enodeman_api:Fun(Pid, Params)
+        end,
         Req:ok({"application/json", mochijson2:encode(Result)})
-    catch
-        %% TODO: for debugging purposes only
-        _:{json_encode, _} -> Req:ok("oops, wrong JSON");
-        _:_ -> Req:not_found()
+    catch 
+        _:{json_encode, _} -> Req:ok("oops, wrong JSON")
     end.
