@@ -19,6 +19,10 @@ handle_request(Req, "/www/" ++ File) ->
     Req:serve_file(File, "priv/www");
 handle_request(Req, "/favicon.ico") ->
     Req:ok({"image/x-icon", ""});
+%XXX: debug code
+handle_request(Req, "/debug_test") ->
+    R = mochijson2:encode({struct, [{"aaa", 234}]}),
+    Req:ok({"application/json", R});
 handle_request(Req, Path) ->
     handle_request(Req, Path, Req:parse_qs()).
 
