@@ -13,4 +13,4 @@ connect(Node, Params) ->
     <<"ok">>.
 
 node_status(Pid, Params) ->
-    <<"ok">>.
+    enodeman_node_controller:node_status(Pid, Params).

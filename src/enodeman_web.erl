@@ -32,6 +32,7 @@ handle_request(Req, "/" ++ Path, Params) ->
             [Node] ->
                 enodeman_api:connect(Node, Params);
             [Node, Action] ->
+                enodeman_api:connect(Node, Params), %TODO: remove it?
                 Fun = list_to_atom(Action),
                 Pid = enodeman_nodes:node_to_pid(Node),
                 enodeman_api:Fun(Pid, Params)
