@@ -3,3 +3,6 @@ all:
 
 first:
 	rebar get-deps compile
+
+up:
+	rebar update-deps
