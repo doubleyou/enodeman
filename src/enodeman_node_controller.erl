@@ -14,6 +14,7 @@
 
 -record(state, {
     node,
+    cookie,
     metrics = []
 }).
 
@@ -22,10 +23,13 @@ start_link(NodeString, Cookie) ->
 
 init([NodeString, Cookie]) ->
     Node = list_to_atom(NodeString),
-    error_logger:format("~p~n", [Cookie]),
-    Cookie == [] orelse erlang:set_cookie(node(), Cookie),
+    erlang:set_cookie(node(), Cookie),
     true = net_kernel:connect_node(Node),
-    {ok, #state{ node = Node }}.
+    State = #state{
+        node = Node,
+        cookie = Cookie
+    },
+    {ok, State}.
 
 handle_call(_Msg, _From, State) ->
     {noreply, State}.
