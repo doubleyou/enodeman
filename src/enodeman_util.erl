@@ -6,7 +6,8 @@
     err/2,
     err/3,
     info/2,
-    info/3
+    info/3,
+    now/0
 ]).
 
 get_env(Key) ->
@@ -34,3 +35,7 @@ logit(Func, M,F,A) ->
     catch _:_ ->
         err(?MODULE, "error while running ~p:~p~nArgs:~p~n", [?MODULE, Func, {M,F,A}])
     end.
+
+now() ->
+    {MegaSec, Sec, MicroSec} = erlang:now(),
+    (MegaSec * 1000000 + Sec) * 1000 + MicroSec div 1000.
