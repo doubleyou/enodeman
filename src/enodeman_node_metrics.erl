@@ -2,15 +2,14 @@
 
 -export([
     get_descr/0,
-    all_metrics/0,
-    all_metrics_ll/0
+    all_metrics/0
 ]).
 
 %{
 %    id,    % user can refer to it via this id
 %    title, % description
 %    update_info, % {module, fun, [args]}
-%    api          % more info on  http://<URL>/<NODE>/<api>
+%    extended_info    % is it possible to get extended info at /ext_info?metric=%s
 %}).
 
 %{io, {erlang, statistics, [io]}},
@@ -26,13 +25,13 @@ all_metrics_ll() -> [
         memory.total,
         <<"Total amount of memory allocated">>,
         {erlang, memory, [total]},
-        <<"/memory">>
+        true
     },
     {
         process_count,
         <<"Number of processes on the node">>,
         {erlang, memory, [total]},
-        undefined
+        false
     }
 ].
 
@@ -41,6 +40,9 @@ all_metrics() ->
 
 get_descr() -> 
     [ 
-        [{id, I},{title, T},{api,A}] 
-        || {I,T,_,A} <- all_metrics_ll()
+        [{id, node},{title, <<"Node name">>}, {api, false}] | 
+        [ 
+            [{id, I},{title, T},{api,A}] 
+            || {I,T,_,A} <- all_metrics_ll()
+        ]
     ].
