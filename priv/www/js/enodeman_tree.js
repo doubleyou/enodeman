@@ -43,48 +43,61 @@
 			},
 			onAfterCompute: function(){
 			},
-			onCreateLabel: function(label, node){
-				label.id = node.id;           
-				label.innerHTML = node.name;
-				label.onclick = function(){
-					self.tree.onClick(node.id);
-				};
-				var style = label.style;
-				style.width = 60 + 'px';
-				style.height = 17 + 'px';     
-				style.cursor = 'pointer';
-				style.color = '#333';
-				style.fontSize = '0.8em';
-				style.textAlign= 'center';
-				style.paddingTop = '3px';
-	 		},
-	   		onBeforePlotNode: function(node) {
-				if (node.selected) {
-					node.data.$color = "#ff7";
-				} else {
-					delete node.data.$color;
-					if(!node.anySubnode("exist")) {
-						var count = 0;
-						node.eachSubnode(function(n) { count++; });
-						node.data.$color = ['#aaa', '#baa', '#caa', '#daa', '#eaa', '#faa'][count];                    
-					}
-				}
+			onCreateLabel: function(label, node) {
+				self.onCreateLabel(label, node);
 			},
+	   		onBeforePlotNode: self.onBeforePlotNode,
 					        
-			onBeforePlotLine: function(adj){
-				if (adj.nodeFrom.selected && adj.nodeTo.selected) {
-					adj.data.$color = "#eed";
-					adj.data.$lineWidth = 3;
-				} else {
-					delete adj.data.$color;
-					delete adj.data.$lineWidth;
-				}
-			}
+			onBeforePlotLine: self.onBeforePlotLine,
 		});
-		self.tree.loadJSON(data);
-		self.tree.compute();
-		self.tree.geom.translate(new $jit.Complex(-200, 0), "current");
-		self.tree.onClick(self.tree.root);
+		this.tree.loadJSON(data);
+		this.tree.compute();
+		this.tree.geom.translate(new $jit.Complex(-200, 0), "current");
+		this.tree.onClick(self.tree.root);
 		this.build = true;
+	};
+
+	ENMTree.prototype.onCreateLabel = function(label, node) {
+		var self = this;
+		var label = $(label);
+		label.get(0).id = node.id;           
+		label.html(node.name);
+		label.click(function(){
+			self.tree.onClick(node.id);
+		});
+		label.css({
+			"width": 60,
+			"heigth": 17,
+			"cursor": "pointer",
+			"color": "#333",
+			"font-size": ".8em",
+			"text-align": "center",
+			"padding-top": 3
+		});
+	};
+
+	ENMTree.prototype.onBeforePlotNode = function(node) {
+		
+		if (node.selected) {
+			node.data.$color = "#ff7";
+		} else {
+			delete node.data.$color;
+			if(!node.anySubnode("exist")) {
+				var count = 0;
+				node.eachSubnode(function(n) { count++; });
+				node.data.$color = ['#aaa', '#baa', '#caa', '#daa', '#eaa', '#faa'][count];                    
+			}
+		}
+	};
+
+	ENMTree.prototype.onBeforePlotLine = function(adj) {
+		
+		if (adj.nodeFrom.selected && adj.nodeTo.selected) {
+			adj.data.$color = "#eed";
+			adj.data.$lineWidth = 3;
+		} else {
+			delete adj.data.$color;
+			delete adj.data.$lineWidth;
+		}
 	};
 })(jQuery);
