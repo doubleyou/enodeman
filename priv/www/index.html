@@ -7,7 +7,6 @@
     <script type="text/javascript" src="/www/js/jquery.js"></script>
     <script type="text/javascript" src="/www/js/jquery-ui-1.8.14.custom.min.js"></script>
     <script type="text/javascript" src="/www/js/grid.locale-en.js"></script>
-    <script type="text/javascript" src="/www/js/grid.locale-en.js"></script>
     <script type="text/javascript" src="/www/js/jquery.jqGrid.min.js"></script>
     <script type="text/javascript" src="/www/js/enodeman_grid.js"></script>
     <script type="text/javascript" src="/www/js/jit.js"></script>
@@ -18,64 +17,73 @@
     <script type="text/javascript" src="/www/js/enodeman_graph.js"></script>
 </head>
 <body>
-   <div id="tabs">
-	<ul>
-		<li><a href="#tabs-1">Grid</a></li>
-		<li><a href="#tabs-2">Tree</a></li>
-	</ul>
-	<div id="tabs-1">
-		<table id="nodes-list"></table>
-    		<!--div id="nodes-pager"></div-->
-    		<table id="processes-list"></table>
-   	</div>
-	<div id="tabs-2">
-    		<div id="tree"></div>
-	</div>
-   </div>
-    <!--div id="processes-pager"></div-->
-    <div id="graphs"></div>
+    <table id="nodes-list"></table>
+    <!--div id="nodes-pager"></div-->
+    <br>
+    <div id="enm-tabs">
+        <ul>
+            <li><a href="#tabs-1">Processes</a></li>
+            <li><a href="#tabs-2">Tree</a></li>
+            <li><a href="#tabs-3">Graphs</a></li>
+        </ul>
+        <div id="tabs-1">
+            <table id="processes-list"></table>
+            <!--div id="processes-pager"></div-->
+        </div>
+        <div id="tabs-2">
+            <div id="enm-tree"></div>
+        </div>
+        <div id="tabs-3">
+            <div id="enm-graphs"></div>
+        </div>
+    </div>
     <script type="text/javascript">
         (function() {
-	    var tree = new ENMTree({
-		targetId: "tree",
-		dataURL: "/nodes/processes_tree",
-		duration: 800,
-		levelDistance: 50,
-		node: {
-			height: 20,
-			width: 60,
-			type: "rectangle",
-			color: "#aaa"
-		},
-		edge: {
-			type: "bezier"
-		}
-	   });
-	    $("#tabs").tabs({
-		show: function(e, ui) {
-			if (ui.panel.id == "tabs-2") {
-				tree.show(tree.data);
-			}
-		}
-	    });
+            var tree = new ENMTree({
+                targetId: "enm-tree",
+                dataURL: "/nodes/processes_tree",
+                duration: 800,
+                levelDistance: 50,
+                node: {
+                    height: 20,
+                    width: 60,
+                    type: "rectangle",
+                    color: "#aaa"
+                },
+                edge: {
+                    type: "bezier"
+                }
+            });
+            $("#enm-tabs").tabs({
+                show: function(e, ui) {
+                    if (ui.panel.id == "tabs-2") {
+                        tree.show(tree.data);
+                    }
+                }
+            });
+            var nodeClickHandler = function(rowId) {
+                $("#processes-list").GridUnload();
+                console.log(rowId);
+                new ENMGrid({
+                    target: $("#processes-list"),
+                    //pager: $("#processes-pager"),
+                    caption: "Processes",
+                    columnsSpecUrl: "/proc_metrics",
+                    dataUrl: "/" + rowId + "/processes"
+                });
+            };
             new ENMGrid({
                 target: $("#nodes-list"),
                 //pager: $("#nodes-pager"),
                 caption: "Nodes",
                 columnsSpecUrl: "/node_metrics",
-                dataUrl: "/nodes"
-            });
-            new ENMGrid({
-                target: $("#processes-list"),
-                //pager: $("#processes-pager"),
-                caption: "Processes",
-                columnsSpecUrl: "/proc_metrics",
-                dataUrl: "/enodeman@127.0.0.1/processes"
+                dataUrl: "/nodes",
+                nodeClickHandler: nodeClickHandler
             });
 
             function ENMStats(node) {
                 $.get("/" + node + "/stats", {}, function(stats) {
-                    var graphsEl = $("#graphs");
+                    var graphsEl = $("#enm-graphs");
                     $.each(stats, function(i, stat) {
                         var xs = [];
                         var ys = [];
@@ -97,10 +105,10 @@
                             targetId: id,
                             width: 900,
                             height: 250,
-                            caption: node + ": " + stat.metric,
+                            caption: node + ": " + stat.metric/*,
                             xTranslator: function(x) {
                                 return new Date(x).toTimeString();
-                            }
+                            }*/
                         });
                         graph.add(
                             stat.metric,
@@ -111,7 +119,6 @@
                     });
                 }, "jsonp");
             };
-            ENMStats("enodeman@127.0.0.1");
         })();
     </script>
 </body>

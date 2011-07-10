@@ -1,6 +1,7 @@
+body { font: 12px Arial; }
 .enm-extended-api { cursor: pointer; }
 .enm-graph { margin-bottom: 10px; }
-#tree {
+#enm-tree {
 	position:relative;
 	overflow:hidden;
 	width:100%;
