@@ -5,7 +5,8 @@
     node_status/2,
     node_processes/2,
     post_process_procs/1,
-    process_proc_metric/1 
+    process_proc_metric/1,
+    get_nodename/1
 ]).
 -export([
     init/1,
@@ -35,6 +36,9 @@ node_processes(Pid, _Params) ->
 start_link(Parent, NodeString, Cookie) ->
     gen_server:start_link(?MODULE, [Parent, NodeString, Cookie], []).
 
+get_nodename(Pid) ->
+    gen_server:call(Pid, get_nodename).
+
 %%%%%%%%%%%%%%%%%%%% gen_server callback functions %%%%%%%%%%%%%%
 
 init([Parent, NodeString, Cookie]) ->
@@ -42,6 +46,9 @@ init([Parent, NodeString, Cookie]) ->
     erlang:set_cookie(node(), Cookie),
     true = net_kernel:hidden_connect(Node),
 
+    Timestamp = enodeman_util:now(),
+    Interval = enodeman_util:get_env(node_metrics_update_interval),
+    enodeman_stats_collector:new_source({node, Node}, Timestamp, Interval, []),
     case reload_remote_module(Node) of
         {badrpc, _} = Error ->
             enodeman_util:err(?MODULE, "can't reload remote module:~n~p~n", [Error]),
@@ -65,6 +72,8 @@ handle_call(node_status, _From, #state{metrics=Metrics} = State) ->
     {reply, Metrics, State};
 handle_call(node_processes, _From, #state{processes=P} = State) ->
     {reply, lists:sublist(P, 5), State};
+handle_call(get_nodename, _From, #state{node=N} = State) ->
+    {reply, N, State};
 handle_call(_Msg, _From, State) ->
     {noreply, State}.
 
@@ -87,7 +96,8 @@ handle_info(_Info, State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{node=Node}) ->
+    enodeman_stats_collector:remove_source({node, Node}),
     ok.
 
 %%%%%%%%%%%%%%%%%%% Internal functions %%%%%%%%%%%%%%%%
@@ -100,6 +110,9 @@ renew_metrics(#state{node = Node} = State) ->
 
     ToCheck = [{K,V} || {K,V} <- AllMetrics, lists:member(K, UserMetrics) ],
     Updates = [{K, update_metric(Node, P)} || {K, P} <- ToCheck],
+    %enodeman_util:info(?MODULE, "Updates:~p~n", [Updates]),
+
+    enodeman_stats_collector:update({node, Node}, Updates),
     {ok, State#state{ metrics = Updates }}.
 
 renew_procs(#state{node = Node} = State) ->
@@ -146,6 +159,7 @@ update_metric(Node, {M, F, A}) ->
     end.
 
 reload_remote_module(Node) ->
+    c:l(enodeman_remote_module),
     {ok, B} = file:read_file(code:which(enodeman_remote_module)),
     rpc:call(Node, code, load_binary, 
         [enodeman_remote_module, "enodeman_remote_module.erl", B]).
