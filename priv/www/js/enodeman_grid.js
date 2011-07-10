@@ -25,7 +25,8 @@
 				name: column.id,
 				index: column.id,
 				title: false,
-				align: "center"
+				align: "center",
+				sortable: false
 			};
 			if (column.api) {
 				params.cellattr = function() {
@@ -46,7 +47,7 @@
 			//rowList: [10, 20, 30],
 			//pager: this.config.pager,
 			//viewrecords: true,
-			sortorder: "desc",
+			//sortorder: "desc",
 			caption: this.config.caption,
 			onCellSelect: function(rowId, columnId, cellContent, element) {
 				if (!$(element.target).hasClass("enm-extended-api")) return;
