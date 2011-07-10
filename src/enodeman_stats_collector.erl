@@ -161,13 +161,14 @@ get_stats(Node, Params) ->
 reduce_stats(MaxPoints, {StartTime, Interval, Stats}) ->
     Lists = split_by(MaxPoints, Stats),
     NewInterval = Interval * length(Stats) / length(Lists),
-    {StartTime, NewInterval, lists:map(fun avg_quad/1, Lists)}.
+    Averages = lists:map(fun avg_quad/1, Lists),
+    {StartTime, NewInterval, Averages}.
 
 split_by(N, L) when length(L) > N ->
     {Pref, Suff} = lists:split(N, L),
     [Pref | split_by(N, Suff)];
-split_by(_, _) ->
-    [].
+split_by(_, L) ->
+    [L].
 
 avg_quad(L) ->
     Total = length(L),
@@ -177,4 +178,4 @@ avg_quad(L) ->
         end,
         0,
         L
-    ) / (Total) * (Total - 1))).
+    ) / (Total))).
