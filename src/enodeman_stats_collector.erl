@@ -55,7 +55,15 @@ init(_) ->
 
 handle_call({stats, Id, Metric}, _From, State) ->
     {StartTime, Interval, Stats} = proplists:get_value(Id, State),
-    {reply, [{StartTime, Interval, proplists:get_value(Metric, Stats)}], State};
+    {
+        reply,
+        [{
+            StartTime,
+            Interval,
+            lists:reverse(proplists:get_value(Metric, Stats))
+        }],
+        State
+    };
 handle_call({flush, Id = {Type, Name}}, _From, State) ->
     {StartTime, Interval, Stats} = proplists:get_value(Id, State),
     [
