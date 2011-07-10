@@ -23,6 +23,12 @@ After all the requirements are met, just clone this project and type
 Just open your browser and type:
     http://localhost:8080/
 
+### Known problems
+
+The only serious caveat enodeman causes to the remote node is serious memory usage when generating processes tree: the current implementation is non-tail-recursive, but it will be improved in the future.
+
+Otherwise, enodeman doesn't cause much load, since the only operations it does on the remote node is periodic getting of basic parameters of the node and its processes.
+
 ### FAQ
 
 Q: Hey, it's almost etop.

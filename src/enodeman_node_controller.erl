@@ -5,7 +5,6 @@
     node_status/2,
     node_processes/1,
     node_processes_ui/1,
-    process_proc_metric/1,
     status/1,
     node_name/1,
     node_processes_tree/1,
@@ -13,7 +12,6 @@
 ]).
 %TODO: for debug. Remove
 -export([
-    post_process_procs/1,
     post_process_tree/1
 ]).
 -export([
@@ -236,7 +234,7 @@ renew_procs(#state{node = Node} = State) ->
     case rpc:call(Node, enodeman_remote_module, get_processes_info, [Types]) of
         {badrpc, _} = Error -> Error;
         P -> 
-            {ok, State#state{processes = post_process_procs(P)}}
+            {ok, State#state{processes = post_process_procs(Node, P)}}
     end.
 
 renew_trees(#state{node = Node} = State) ->
@@ -251,22 +249,29 @@ renew_trees(#state{node = Node} = State) ->
             {ok, State#state{trees = Ts}}
     end.
 
-post_process_procs(Procs) ->
+post_process_procs(Node, Procs) ->
     [ 
         begin
                 Pid = list_to_binary(pid_to_list(P)),
                 UpdatedMs = [{pid, Pid} | Ms],
-                Metrics = lists:map(fun process_proc_metric/1, UpdatedMs),
+                Metrics = [process_proc_metric(Node, P, M) || M <- UpdatedMs],
                 {Pid, Metrics}
         end || {P, Ms} <- Procs
     ].
 
-process_proc_metric({initial_call, {M, F, Arity}}) ->
+process_proc_metric(Node, Pid, {initial_call, {proc_lib, init_p, 5} = IC}) ->
+    Dict = case rpc:call(Node, erlang, process_info, [Pid, dictionary]) of
+        {dictionary, D} -> D;
+        _ -> []
+    end,
+    ActualInitialCall = proplists:get_value('$initial_call', Dict, IC),
+    process_proc_metric(Node, Pid, {initial_call, ActualInitialCall});
+process_proc_metric(_, _, {initial_call, {M, F, Arity}}) ->
     {initial_call, list_to_binary(
         atom_to_list(M) ++ ":" ++ 
         atom_to_list(F) ++ "/" ++ 
         integer_to_list(Arity))};
-process_proc_metric(V) -> V.
+process_proc_metric(_, _, V) -> V.
 
 update_metric(Node, {M, F, A}) ->
     case rpc:call(Node, M, F, A) of
