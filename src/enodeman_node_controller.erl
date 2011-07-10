@@ -14,8 +14,7 @@
 %TODO: for debug. Remove
 -export([
     post_process_procs/1,
-    post_process_trees/2,
-    build_graph/2
+    post_process_tree/1
 ]).
 -export([
     init/1,
@@ -62,47 +61,55 @@ status(Pid) ->
     gen_server:call(Pid, status).
 
 node_processes_tree(Pid) ->
-    [{_App, Deps}] = gen_server:call(Pid, node_processes_tree),
-    G = digraph:new([acyclic]),
-    S = sets:new(),
-    build_graph({G,S}, Deps),
-    ok.
+    Tree = {root, gen_server:call(Pid, node_processes_tree)},
+    Tree.
   
 
-% build graph. Edges are from parent to childs
-build_graph({G,_S}, []) -> G;
-build_graph({G,S}, [{Parent, Children} | Rest]) ->
-    S1 = possibly_add_vertices(G, S, [Parent | Children]),
-    [ digraph:add_edge(G, Parent, Child) || Child <- Children ],
-    build_graph({G,S1}, Rest).
+post_process_tree([]) -> [];
+post_process_tree({P, Childs}) ->
+    {struct, [
+        {<<"id">>, proc_aa(P)},
+        {<<"name">>, proc_aa(P)},
+        {<<"data">>, {struct, []}},
+        {<<"children">>, post_process_tree(Childs)}
+    ]};
+post_process_tree([P | Rest]) ->
+    [ post_process_tree(P) | post_process_tree(Rest) ];
+post_process_tree(P) ->
+    {struct, [
+        {<<"id">>, proc_aa(P)},
+        {<<"name">>, proc_aa(P)},
+        {<<"data">>, {struct, []}},
+        {<<"children">>, []}
+    ]}.
 
 
-possibly_add_vertices(_G, S, []) -> S;
-possibly_add_vertices(G, S, [P | Rest]) ->
-    S1 = case sets:is_element(P, S) of
-        true -> S;
-        _ -> 
-            V = digraph:add_vertex(G),  % add vertex
-            digraph:add_vertex(G, V, P), % label vertex with value P
-            sets:add_element(P, S)
-    end,
-    possibly_add_vertices(G, S1, Rest).
-
+proc_aa(P) when is_pid(P) -> list_to_binary(pid_to_list(P));
+proc_aa(P) -> P.
 
 
 node_processes_tree_ui(Pid) -> 
-    _Tree = node_processes_tree(Pid),
+    {root, Apps} =  node_processes_tree(Pid),
+    [
+        {<<"id">>, root},
+        {<<"name">>, root},
+        {<<"data">>, {struct, []}},
+        {<<"children">>, post_process_tree(Apps)}
+    ].
+
+% how it should look
+should_ui_tree() ->
     [
         {<<"id">>, <<"node01">>},
         {<<"name">>, <<"0.1">>},
         {<<"data">>, {struct, []}},
-        {<<"children">>, [
-            {struct, [
-                {<<"id">>, <<"node11">>},
+        {<<"children">>, 
+            [{struct, 
+               [{<<"id">>, <<"node11">>},
                 {<<"name">>, <<"1.1">>},
                 {<<"data">>, {struct, []}},
-                {<<"children">>, [
-                    {struct, [
+                {<<"children">>, 
+                   [{struct, [
                         {<<"id">>, <<"node21">>},
                         {<<"name">>, <<"2.1">>},
                         {<<"data">>, {struct, []}},
@@ -232,14 +239,16 @@ renew_procs(#state{node = Node} = State) ->
             {ok, State#state{processes = post_process_procs(P)}}
     end.
 
-renew_trees(#state{node = Node, processes = Ps} = State) ->
+renew_trees(#state{node = Node} = State) ->
     Interval = enodeman_util:get_env(trees_update_interval),
     erlang:send_after(Interval, self(), renew_trees),
-    SkipApps = enodeman_util:get_env(not_monitored_apps),
+    %SkipApps = enodeman_util:get_env(not_monitored_apps),
+    %SkipApps = [],
+    SkipApps = [stdlib],
     case rpc:call(Node, enodeman_remote_module, build_trees, [SkipApps]) of
         {badrpc, _} = Error -> Error;
         Ts -> 
-            {ok, State#state{trees = post_process_trees1(Ps, Ts)}}
+            {ok, State#state{trees = Ts}}
     end.
 
 post_process_procs(Procs) ->
@@ -284,30 +293,10 @@ process_info_to_row_grid({Pid, PL}) ->
         ]
     }.
 
-post_process_trees1(_Ps, Ts) -> 
-    [{App, post_process_tree1(_Ps, T, [])} || {App, T} <- Ts].
-post_process_tree1(_, [], Acc) -> Acc;
-post_process_tree1(Ps, [{Sup, Childs} | Rest], Acc) ->
-    UpdatedChilds = [list_to_binary(pid_to_list(P)) || P <- Childs ],
-    UpdatedSup = list_to_binary(pid_to_list(Sup)),
-    post_process_tree1(Ps, Rest, [{UpdatedSup, UpdatedChilds} | Acc]).
-
-
-
-post_process_trees(Ps, Ts) ->
-    [{App, post_process_tree(Ps, T, [])} || {App, T} <- Ts].
-
-post_process_tree(_, [], Acc) -> Acc;
-post_process_tree(Ps, [{Sup, Childs} | Rest], Acc) ->
-    UpdatedChilds = [ update_proc_info(P, Ps) || P <- Childs ],
-    UpdatedSup = update_proc_info(Sup, Ps),
-    post_process_tree(Ps, Rest, [{UpdatedSup, UpdatedChilds} | Acc]).
-
-
-update_proc_info(P, Ps) ->
-    Pid = list_to_binary(pid_to_list(P)),
-    case proplists:get_value(Pid, Ps) of
-        undefined -> Pid;
-        V -> V
-    end.
+%update_proc_info(P, Ps) ->
+%    Pid = list_to_binary(pid_to_list(P)),
+%    case proplists:get_value(Pid, Ps) of
+%        undefined -> Pid;
+%        V -> V
+%    end.
 

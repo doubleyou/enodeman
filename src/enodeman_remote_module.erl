@@ -2,7 +2,7 @@
 
 -export([
     get_processes_info/1,
-    build_trees/1,
+    build_trees/1
 ]).
 
 get_processes_info(Types) ->
