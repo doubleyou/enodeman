@@ -29,5 +29,15 @@ processes_raw(Pid, Params) ->
     {struct, enodeman_node_controller:node_processes(Pid, Params)}.
 
 stats(Pid, Params) ->
-    Node = enodeman_stats_collector:node_name(Pid),
-    enodeman_stats_collector:get_stats(Node, Params).
+    Node = enodeman_node_controller:node_name(Pid),
+    RawStats = enodeman_stats_collector:get_stats(Node, Params),
+    [
+        {struct, [
+            {metric, M},
+            {data, [
+                {struct, [{start_time, ST}, {interval, I}, {stats, S}]}
+                || {ST, I, S} <- Curve
+            ]}
+        ]}
+        || {M, Curve} <- RawStats
+    ].

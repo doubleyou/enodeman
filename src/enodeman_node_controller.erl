@@ -6,7 +6,7 @@
     node_processes/2,
     post_process_procs/1,
     process_proc_metric/1,
-    get_nodename/1
+    node_name/1
 ]).
 -export([
     init/1,
@@ -36,7 +36,7 @@ node_processes(Pid, _Params) ->
 start_link(Parent, NodeString, Cookie) ->
     gen_server:start_link(?MODULE, [Parent, NodeString, Cookie], []).
 
-get_nodename(Pid) ->
+node_name(Pid) ->
     gen_server:call(Pid, get_nodename).
 
 %%%%%%%%%%%%%%%%%%%% gen_server callback functions %%%%%%%%%%%%%%
