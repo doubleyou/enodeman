@@ -2,8 +2,7 @@
 
 -export([
     get_descr/0,
-    all_metrics/0,
-    all_metrics_ll/0
+    all_metrics/0
 ]).
 
 %{
@@ -41,6 +40,9 @@ all_metrics() ->
 
 get_descr() -> 
     [ 
-        [{id, I},{title, T},{api,A}] 
-        || {I,T,_,A} <- all_metrics_ll()
+        [{id, node},{title, <<"Node name">>}, {api, false}] | 
+        [ 
+            [{id, I},{title, T},{api,A}] 
+            || {I,T,_,A} <- all_metrics_ll()
+        ]
     ].
