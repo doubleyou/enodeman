@@ -41,7 +41,6 @@
 			datatype: "json",
 			gridview: true,
 			autowidth: true,
-			colNames: columnsSpec.titles,
 			colModel: columnModel,
 			//rowNum: 10,
 			//rowList: [10, 20, 30],
@@ -49,13 +48,9 @@
 			//viewrecords: true,
 			sortorder: "desc",
 			caption: this.config.caption,
-			gridComplete: function() {
-				target.find(".jqgrow td.enm-extended-api").click(function() {
-					var el = $(this);
-					var rowId = el.parent().attr("id");
-					var columnId = el.attr("aria-describedby").replace(self.config.targetId + "_", "");
-					console.log([rowId, columnId]);
-				});
+			onCellSelect: function(rowId, columnId, cellContent, element) {
+				if (!$(element.target).hasClass("enm-extended-api")) return;
+				console.log([rowId, columnModel[columnId].name]);
 			}
 		});
 		//target.jqGrid("navGrid", this.config.pager, {edit: false, add: false, del: false});
