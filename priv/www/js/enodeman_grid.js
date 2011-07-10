@@ -39,7 +39,7 @@
 		this.built = true;
 		var target = this.config.target;
 		target.jqGrid({
-			url: this.config.dataUrl,
+			url: self.config.dataUrl,
 			datatype: "json",
 			gridview: true,
 			autowidth: true,
@@ -49,10 +49,25 @@
 			//pager: this.config.pager,
 			//viewrecords: true,
 			//sortorder: "desc",
-			caption: this.config.caption,
+			caption: self.config.caption,
+			gridComplete: function() {
+				var els = target.find("tr.jqgrow");
+				if (self.config.nodeClickHandler) {
+					els.find("td:first").css("cursor", "pointer");
+					var id = $(els[0]).attr("id");
+					target.jqGrid("setSelection", id, false);
+					self.config.nodeClickHandler(id);
+				}
+			},
 			onCellSelect: function(rowId, columnId, cellContent, element) {
+				if (columnId == 0) {
+					if (self.config.nodeClickHandler) {
+						self.config.nodeClickHandler(rowId);
+						return;
+					}
+				}
 				if (!$(element.target).hasClass("enm-extended-api")) return;
-				console.log([rowId, columnModel[columnId].name]);
+				//console.log([rowId, columnModel[columnId].name]);
 			}
 		});
 		//target.jqGrid("navGrid", this.config.pager, {edit: false, add: false, del: false});

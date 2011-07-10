@@ -123,7 +123,6 @@ renew_metrics(#state{node = Node} = State) ->
 
     ToCheck = [{K,V} || {K,V} <- AllMetrics, lists:member(K, UserMetrics) ],
     Updates = [{K, update_metric(Node, P)} || {K, P} <- ToCheck],
-    %enodeman_util:info(?MODULE, "Updates:~p~n", [Updates]),
 
     enodeman_stats_collector:update({node, Node}, Updates),
     {ok, State#state{ metrics = Updates }}.

@@ -55,7 +55,15 @@ init(_) ->
 
 handle_call({stats, Id, Metric}, _From, State) ->
     {StartTime, Interval, Stats} = proplists:get_value(Id, State),
-    {reply, [{StartTime, Interval, proplists:get_value(Metric, Stats)}], State};
+    {
+        reply,
+        [{
+            StartTime,
+            Interval,
+            lists:reverse(proplists:get_value(Metric, Stats))
+        }],
+        State
+    };
 handle_call({flush, Id = {Type, Name}}, _From, State) ->
     {StartTime, Interval, Stats} = proplists:get_value(Id, State),
     [
@@ -158,15 +166,15 @@ reduce_stats(MaxPoints, {StartTime, Interval, Stats}) ->
 split_by(N, L) when length(L) > N ->
     {Pref, Suff} = lists:split(N, L),
     [Pref | split_by(N, Suff)];
-split_by(_, L) ->
-    [L].
+split_by(_, _) ->
+    [].
 
 avg_quad(L) ->
     Total = length(L),
-    math:sqrt(lists:foldl(
+    round(math:sqrt(lists:foldl(
         fun(I, Acc) ->
             Acc + I*I
         end,
         0,
         L
-    ) / (Total) * (Total - 1)).
+    ) / (Total) * (Total - 1))).

@@ -30,7 +30,7 @@ all_metrics_ll() -> [
     {
         process_count,
         <<"Number of processes on the node">>,
-        {erlang, memory, [total]},
+        {erlang, system_info, [process_count]},
         false
     }
 ].
