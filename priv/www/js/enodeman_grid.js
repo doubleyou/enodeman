@@ -1,16 +1,6 @@
 (function($) {
-	var columnModelParams = [
-		{width: 70},
-		{width: 90},
-		{width: 100},
-		{width: 80, align: "right"},
-		{width: 80, align: "right"},
-		{width: 80, align: "right"},
-		{width: 150, sortable: false}
-	];
-	var built = false;
-
 	window.ENMGrid = function(config) {
+		this.built = false;
 		this.config = $.extend({}, config);
 		this.config.targetId = this.config.target.attr("id");
 		this.init();
@@ -24,32 +14,43 @@
 	};
 
 	ENMGrid.prototype.show = function(columnsSpec) {
-		var self = this;
-		var columnModel = [];
-		$.each(columnsSpec.ids, function(i, id) {
-			var params = $.extend({name: id, index: id}, columnModelParams[i]);
-			columnModel.push(params);
-		});
-		if (built) {
+		if (this.built) {
 			this.reload();
 			return;
 		}
-		built = true;
+		var self = this;
+		var columnModel = [];
+		$.each(columnsSpec, function(i, column) {
+			var params = {
+				name: column.id,
+				index: column.id,
+				title: false,
+				align: "center"
+			};
+			if (column.api) {
+				params.cellattr = function() {
+					return 'class="enm-extended-api"';
+				}
+			}
+			columnModel.push(params);
+		});
+		this.built = true;
 		var target = this.config.target;
 		target.jqGrid({
 			url: this.config.dataUrl,
 			datatype: "json",
+			gridview: true,
+			autowidth: true,
 			colNames: columnsSpec.titles,
 			colModel: columnModel,
 			//rowNum: 10,
 			//rowList: [10, 20, 30],
 			//pager: this.config.pager,
-			sortname: columnsSpec.ids[0],
-			viewrecords: true,
+			//viewrecords: true,
 			sortorder: "desc",
 			caption: this.config.caption,
 			gridComplete: function() {
-				target.find(".jqgrow td").click(function() {
+				target.find(".jqgrow td.enm-extended-api").click(function() {
 					var el = $(this);
 					var rowId = el.parent().attr("id");
 					var columnId = el.attr("aria-describedby").replace(self.config.targetId + "_", "");
@@ -61,6 +62,6 @@
 	};
 
 	ENMGrid.prototype.reload = function() {
-		this.config.target.trigger("reloadGrid", [{current:true}]);
+		this.config.target.trigger("reloadGrid", [{current: true}]);
 	};
 })(jQuery);

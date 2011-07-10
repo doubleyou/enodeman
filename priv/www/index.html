@@ -1,6 +1,36 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ru">
+<head>
+    <link rel="stylesheet" href="/www/css/smoothness/jquery-ui-1.8.14.custom.css">
+    <link rel="stylesheet" href="/www/css/ui.jqgrid.css">
+    <link rel="stylesheet" href="/www/css/enodeman.css">
+    <script type="text/javascript" src="/www/js/jquery.js"></script>
+    <script type="text/javascript" src="/www/js/grid.locale-en.js"></script>
+    <script type="text/javascript" src="/www/js/jquery.jqGrid.src.js"></script>
+    <script type="text/javascript" src="/www/js/enodeman_grid.js"></script>
+</head>
 <body>
-<script type="text/javascript" src="/www/enodeman.js"></script>
+    <table id="nodes-list"></table>
+    <!--div id="nodes-pager"></div-->
+    <table id="processes-list"></table>
+    <!--div id="processes-pager"></div-->
+    <script type="text/javascript">
+        (function() {
+            new ENMGrid({
+                target: $("#nodes-list"),
+                //pager: $("#nodes-pager"),
+                caption: "Nodes",
+                columnsSpecUrl: "/node_metrics",
+                dataUrl: "/nodes"
+            });
+            new ENMGrid({
+                target: $("#processes-list"),
+                //pager: $("#processes-pager"),
+                caption: "Processes",
+                columnsSpecUrl: "/proc_metrics",
+                dataUrl: "/nodes/processes"
+            });
+        })();
+    </script>
 </body>
 </html>
