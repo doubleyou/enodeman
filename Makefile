@@ -13,3 +13,7 @@ up:
 .PHONY:tags
 tags:
 	ctags -R
+
+.PHONY:clean
+clean:
+	rebar clean skip_deps=true

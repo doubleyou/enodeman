@@ -2,10 +2,17 @@
 
 -export([
     get_descr/0,
-    all_metrics/0
+    all_metrics/0,
+    get_names/0
 ]).
 
 all_metrics_ll() -> [
+    { 
+        registered_name,
+        <<"Registered process name">>,
+        {erlang, process_info, [registered_name]}, %XXX: doesn't work
+        false
+    },
     { 
         initial_call,
         <<"Initial call function">>,
@@ -37,9 +44,13 @@ all_metrics() ->
 
 get_descr() -> 
     [
-        [{id, proc},{title, <<"process name or pid">>}, {api, false}] | 
+        [{id, pid},{title, <<"process pid">>}, {api, false}] | 
         [ 
             [{id, I},{title, T},{api,A}] 
             || {I,T,_,A} <- all_metrics_ll()
         ]
     ].
+
+get_names() ->
+    [ I || {I,_,_,_} <- all_metrics_ll() ].
+

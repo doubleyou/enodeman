@@ -5,7 +5,8 @@
     stats/2,
     node_metrics/0,
     proc_metrics/0,
-    processes_raw/2
+    processes_raw/2,
+    processes/2
 ]).
 
 %  :8080/<NODE>/<FUNC>?a=b&c=d
@@ -13,7 +14,7 @@
 
 connect(Node, Params) ->
     Cookie = list_to_atom(proplists:get_value("cookie", Params, "")),
-    enodeman_nodes:node_to_pid(Node, Cookie),
+    enodeman_nodes:connect(Node, Cookie),
     <<"ok">>.
 
 node_status(Pid, Params) ->
@@ -25,9 +26,23 @@ node_metrics() ->
 proc_metrics() ->
     enodeman_proc_metrics:get_descr().
     
-processes_raw(Pid, Params) ->
-    {struct, enodeman_node_controller:node_processes(Pid, Params)}.
+processes_raw(Pid, _Params) ->
+    {struct, enodeman_node_controller:node_processes(Pid)}.
+
+% hack for the grid
+processes(Pid, _Params) ->
+    enodeman_node_controller:node_processes_grid(Pid).
 
 stats(Pid, Params) ->
-    Node = enodeman_stats_collector:node_name(Pid),
-    enodeman_stats_collector:get_stats(Node, Params).
+    Node = enodeman_node_controller:node_name(Pid),
+    RawStats = enodeman_stats_collector:get_stats(Node, Params),
+    [
+        {struct, [
+            {metric, M},
+            {data, [
+                {struct, [{start_time, ST}, {interval, I}, {stats, S}]}
+                || {ST, I, S} <- Curve
+            ]}
+        ]}
+        || {M, Curve} <- RawStats
+    ].

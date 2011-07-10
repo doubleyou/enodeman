@@ -3,7 +3,7 @@
 -export([
     start_link/0,
     node_to_pid/1,
-    node_to_pid/2,
+    connect/2,
     init/1
 ]).
 
@@ -15,9 +15,9 @@ node_to_pid(Node) ->
     {_, ParentPid, _, _} = lists:keyfind(Node, 1, supervisor:which_children(?MODULE)),
     controller_by_sup(ParentPid).
 
-node_to_pid(Node, Cookie) when is_atom(Node) ->
-    node_to_pid(atom_to_list(Node), Cookie);
-node_to_pid(Node, Cookie) ->
+connect(Node, Cookie) when is_atom(Node) ->
+    connect(atom_to_list(Node), Cookie);
+connect(Node, Cookie) ->
     case lists:keyfind(Node, 1, supervisor:which_children(?MODULE)) of
         {_, Pid, _, _} ->
             controller_by_sup(Pid);
