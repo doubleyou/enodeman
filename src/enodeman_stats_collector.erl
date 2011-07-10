@@ -93,7 +93,7 @@ maybe_append_data(B, K, V) ->
     end.
 
 update_stats(Update, Stats) ->
-    [{K, [proplists:get_value(K, Update) | V]} || {K, V} <- Stats].
+    [{K, [V | proplists:get_value(K, Stats)]} || {K, V} <- Update].
 
 riak_bucket(Type, Name, Metric) ->
     [BT, BN, BM] = [ensure_binary(V) || V <- [Type, Name, Metric]],
