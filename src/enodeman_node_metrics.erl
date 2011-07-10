@@ -40,6 +40,7 @@ all_metrics() ->
 
 get_descr() -> 
     [ 
+        % hack: api should be always false for id=node (js + clientside)
         [{id, node},{title, <<"Node name">>}, {api, false}] | 
         [ 
             [{id, I},{title, T},{api,A}] 

@@ -40,7 +40,12 @@ fold_tree([SupPid | Rest], Acc) ->
     fold_tree(NewRest, [{SupPid, CurChilds} | Acc]).
 
 get_apps(SkipApps) ->
-    [A 
+    Apps = [A 
         || {A, _, _} <- application:which_applications(),
         not lists:member(A, SkipApps)
-    ].
+    ],
+    %TODO: 
+    case Apps of
+        [] -> [];
+        [A | _] -> [A]
+    end.

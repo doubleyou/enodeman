@@ -26,7 +26,7 @@ handle_request(Req, "/" ++ Path, Params) ->
     try
         Words = re:split(Path, "\/", [{return, list}]),
         Result = process_path_request(Words, Params),
-        %enodeman_util:info(?MODULE, "handle_request ~p (~p)~nResult:~n~p~n", [Path, Params, Result]),
+        enodeman_util:info(?MODULE, "handle_request ~p (~p)~nResult:~n~p~n", [Path, Params, Result]),
 
         Encoded = mochijson2:encode(Result),
         MaybeJSONP = case proplists:get_value("callback", Params) of
@@ -53,54 +53,6 @@ process_path_request(["nodes"],Params) ->
             || Node <- Nodes
         ]}
     ];
-%XXX: remove debug code
-process_path_request([_N, "processes_tree"],_) ->
-    [
-        {<<"id">>, <<"node01">>},
-        {<<"name">>, <<"0.1">>},
-        {<<"data">>, {struct, []}},
-        {<<"children">>, [
-            {struct, [
-                {<<"id">>, <<"node11">>},
-                {<<"name">>, <<"1.1">>},
-                {<<"data">>, {struct, []}},
-                {<<"children">>, [
-                    {struct, [
-                        {<<"id">>, <<"node21">>},
-                        {<<"name">>, <<"2.1">>},
-                        {<<"data">>, {struct, []}},
-                        {<<"children">>, []}
-                    ]},
-                    {struct, [
-                        {<<"id">>, <<"node22">>},
-                        {<<"name">>, <<"2.2">>},
-                        {<<"data">>, {struct, []}},
-                        {<<"children">>, []}
-                    ]}
-                ]}
-            ]},
-            {struct, [
-                {<<"id">>, <<"node12">>},
-                {<<"name">>, <<"1.2">>},
-                {<<"data">>, {struct, []}},
-                {<<"children">>, [
-                    {struct, [
-                        {<<"id">>, <<"node23">>},
-                        {<<"name">>, <<"2.3">>},
-                        {<<"data">>, {struct, []}},
-                        {<<"children">>, []}
-                    ]},
-                    {struct, [
-                        {<<"id">>, <<"node24">>},
-                        {<<"name">>, <<"2.4">>},
-                        {<<"data">>, {struct, []}},
-                        {<<"children">>, []}
-                    ]}
-                ]}
-            ]}
-        ]}
-    ];
-%XXX: remove debug code
 process_path_request(["node_metrics"],_) ->
     enodeman_api:node_metrics();
 process_path_request(["proc_metrics"],_) ->

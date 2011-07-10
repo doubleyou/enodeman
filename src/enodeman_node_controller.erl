@@ -4,11 +4,18 @@
     start_link/3,
     node_status/2,
     node_processes/1,
-    node_processes_grid/1,
-    post_process_procs/1,
+    node_processes_ui/1,
     process_proc_metric/1,
     status/1,
-    node_name/1
+    node_name/1,
+    node_processes_tree/1,
+    node_processes_tree_ui/1
+]).
+%TODO: for debug. Remove
+-export([
+    post_process_procs/1,
+    post_process_trees/2,
+    build_graph/2
 ]).
 -export([
     init/1,
@@ -36,6 +43,15 @@ node_status(Pid, _Params) ->
 node_processes(Pid) -> 
     gen_server:call(Pid, node_processes).
 
+node_processes_ui(Pid) ->
+    Processes = node_processes(Pid),
+    [
+        {<<"page">>,1},
+        {<<"total">>,1},
+        {<<"records">>,2},
+        {<<"rows">>, [process_info_to_row_grid(P) || P <- Processes]}
+    ].
+
 start_link(Parent, NodeString, Cookie) ->
     gen_server:start_link(?MODULE, [Parent, NodeString, Cookie], []).
 
@@ -44,6 +60,83 @@ node_name(Pid) ->
 
 status(Pid) ->
     gen_server:call(Pid, status).
+
+node_processes_tree(Pid) ->
+    [{_App, Deps}] = gen_server:call(Pid, node_processes_tree),
+    G = digraph:new([acyclic]),
+    S = sets:new(),
+    build_graph({G,S}, Deps),
+    ok.
+  
+
+% build graph. Edges are from parent to childs
+build_graph({G,_S}, []) -> G;
+build_graph({G,S}, [{Parent, Children} | Rest]) ->
+    S1 = possibly_add_vertices(G, S, [Parent | Children]),
+    [ digraph:add_edge(G, Parent, Child) || Child <- Children ],
+    build_graph({G,S1}, Rest).
+
+
+possibly_add_vertices(_G, S, []) -> S;
+possibly_add_vertices(G, S, [P | Rest]) ->
+    S1 = case sets:is_element(P, S) of
+        true -> S;
+        _ -> 
+            V = digraph:add_vertex(G),  % add vertex
+            digraph:add_vertex(G, V, P), % label vertex with value P
+            sets:add_element(P, S)
+    end,
+    possibly_add_vertices(G, S1, Rest).
+
+
+
+node_processes_tree_ui(Pid) -> 
+    _Tree = node_processes_tree(Pid),
+    [
+        {<<"id">>, <<"node01">>},
+        {<<"name">>, <<"0.1">>},
+        {<<"data">>, {struct, []}},
+        {<<"children">>, [
+            {struct, [
+                {<<"id">>, <<"node11">>},
+                {<<"name">>, <<"1.1">>},
+                {<<"data">>, {struct, []}},
+                {<<"children">>, [
+                    {struct, [
+                        {<<"id">>, <<"node21">>},
+                        {<<"name">>, <<"2.1">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]},
+                    {struct, [
+                        {<<"id">>, <<"node22">>},
+                        {<<"name">>, <<"2.2">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]}
+                ]}
+            ]},
+            {struct, [
+                {<<"id">>, <<"node12">>},
+                {<<"name">>, <<"1.2">>},
+                {<<"data">>, {struct, []}},
+                {<<"children">>, [
+                    {struct, [
+                        {<<"id">>, <<"node23">>},
+                        {<<"name">>, <<"2.3">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]},
+                    {struct, [
+                        {<<"id">>, <<"node24">>},
+                        {<<"name">>, <<"2.4">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]}
+                ]}
+            ]}
+        ]}
+    ].
 
 %%%%%%%%%%%%%%%%%%%% gen_server callback functions %%%%%%%%%%%%%%
 
@@ -80,6 +173,8 @@ handle_call(node_status, _From, #state{metrics=Metrics} = State) ->
     {reply, Metrics, State};
 handle_call(node_processes, _From, #state{processes=P} = State) ->
     {reply, P, State};
+handle_call(node_processes_tree, _From, #state{trees = T} = State) ->
+    {reply, T, State};
 handle_call(node_name, _From, #state{node=N} = State) ->
     {reply, N, State};
 handle_call(_Msg, _From, State) ->
@@ -99,7 +194,7 @@ handle_info(renew_procs, State) ->
         Error -> {stop, Error, State}
     end;
 handle_info(renew_trees, State) ->
-    case renew_metrics(State) of
+    case renew_trees(State) of
         {ok, State1} -> {noreply, State1};
         Error -> {stop, Error, State}
     end;
@@ -137,14 +232,14 @@ renew_procs(#state{node = Node} = State) ->
             {ok, State#state{processes = post_process_procs(P)}}
     end.
 
-renew_trees(#state{node = Node} = State) ->
+renew_trees(#state{node = Node, processes = Ps} = State) ->
     Interval = enodeman_util:get_env(trees_update_interval),
     erlang:send_after(Interval, self(), renew_trees),
     SkipApps = enodeman_util:get_env(not_monitored_apps),
     case rpc:call(Node, enodeman_remote_module, build_trees, [SkipApps]) of
         {badrpc, _} = Error -> Error;
-        T -> 
-            {ok, State#state{trees = post_process_trees(T)}}
+        Ts -> 
+            {ok, State#state{trees = post_process_trees1(Ps, Ts)}}
     end.
 
 post_process_procs(Procs) ->
@@ -182,31 +277,6 @@ reload_remote_module(Node) ->
     rpc:call(Node, code, load_binary, 
         [enodeman_remote_module, "enodeman_remote_module.erl", B]).
 
-node_processes_grid(Pid) ->
-    Processes = node_processes(Pid),
-    _Need = [
-                {<<"page">>,1},
-                {<<"total">>,1},
-                {<<"records">>,2},
-                {<<"rows">>,[
-                        {struct, [
-                                {<<"id">>,process_name_1},
-                                {<<"cell">>, [process_name_1, <<"aaa:bbb/2">>, <<"10000">>, <<"10000">>, <<"2">>]}
-                            ]},
-                        {struct, [
-                                {<<"id">>,process_name_2},
-                                {<<"cell">>, [process_name_2, <<"bbb:ccc/2">>, <<"10000">>, <<"10000">>, <<"2">>]}
-                            ]}
-                    ]
-                }
-            ],
-    [
-        {<<"page">>,1},
-        {<<"total">>,1},
-        {<<"records">>,2},
-        {<<"rows">>, [process_info_to_row_grid(P) || P <- Processes]}
-    ].
-
 process_info_to_row_grid({Pid, PL}) -> 
     {struct, [
             {<<"id">>, Pid},
@@ -214,4 +284,30 @@ process_info_to_row_grid({Pid, PL}) ->
         ]
     }.
 
-post_process_trees(T) -> T.
+post_process_trees1(_Ps, Ts) -> 
+    [{App, post_process_tree1(_Ps, T, [])} || {App, T} <- Ts].
+post_process_tree1(_, [], Acc) -> Acc;
+post_process_tree1(Ps, [{Sup, Childs} | Rest], Acc) ->
+    UpdatedChilds = [list_to_binary(pid_to_list(P)) || P <- Childs ],
+    UpdatedSup = list_to_binary(pid_to_list(Sup)),
+    post_process_tree1(Ps, Rest, [{UpdatedSup, UpdatedChilds} | Acc]).
+
+
+
+post_process_trees(Ps, Ts) ->
+    [{App, post_process_tree(Ps, T, [])} || {App, T} <- Ts].
+
+post_process_tree(_, [], Acc) -> Acc;
+post_process_tree(Ps, [{Sup, Childs} | Rest], Acc) ->
+    UpdatedChilds = [ update_proc_info(P, Ps) || P <- Childs ],
+    UpdatedSup = update_proc_info(Sup, Ps),
+    post_process_tree(Ps, Rest, [{UpdatedSup, UpdatedChilds} | Acc]).
+
+
+update_proc_info(P, Ps) ->
+    Pid = list_to_binary(pid_to_list(P)),
+    case proplists:get_value(Pid, Ps) of
+        undefined -> Pid;
+        V -> V
+    end.
+
