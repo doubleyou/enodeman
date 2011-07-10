@@ -29,5 +29,5 @@ processes_raw(Pid, Params) ->
     {struct, enodeman_node_controller:node_processes(Pid, Params)}.
 
 stats(Pid, Params) ->
-    Node = enodeman_stats_collector:node(),
+    Node = enodeman_stats_collector:node_name(Pid),
     enodeman_stats_collector:get_stats(Node, Params).
