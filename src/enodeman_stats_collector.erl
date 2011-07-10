@@ -32,12 +32,12 @@ remove_source({Type, Name}) ->
     gen_server:cast(?MODULE, {stop, {Type, Name}}).
 
 read({Type, Name}, Metric, Date) ->
-    {ok, O} = simple_riak_client:do(get, [
+    {ok, O} = simple_riak_pool:do(get, [
             riak_bucket(Type, Name, Metric),
             riak_key(Date),
             [{r, 1}]
         ]),
-    term_to_binary(riakc_obj:get_value(O)).
+    binary_to_term(riakc_obj:get_value(O)).
 
 init(_) ->
     {ok, []}.
@@ -45,7 +45,8 @@ init(_) ->
 handle_call(_Msg, _From, State) ->
     {noreply, State}.
 
-handle_cast({new_source, {Type, Name, StartTime, Interval}, Stats}, State) ->
+handle_cast({new_source, {Type, Name, StartTime, Interval}, RawStats}, State) ->
+    Stats = [{K, [V]} || {K, V} <- RawStats],
     {noreply, [{{Type, Name}, {StartTime, Interval, Stats}} | State]};
 handle_cast({update, Id, Update}, State) ->
     {StartTime, Interval, OldStats} = proplists:get_value(Id, State),
@@ -62,7 +63,7 @@ handle_cast({stop, Id = {Type, Name}}, State) ->
             K = riak_key(),
             V = {StartTime, Interval, lists:reverse(Data)},
             O = maybe_append_data(B, K, V),
-            simple_riak_client:do(put, [O, [{w, 2}, {dw, 1}], 1000])
+            simple_riak_pool:do(put, [O, [{w, 2}, {dw, 1}], 1000])
         end
         || {Metric, Data} <- Stats
     ],
@@ -80,7 +81,7 @@ terminate(_Reason, _State) ->
     ok.
 
 maybe_append_data(B, K, V) ->
-    case simple_riak_client:do(get, [B, K, [{r, 1}]]) of
+    case simple_riak_pool:do(get, [B, K, [{r, 1}]]) of
         {ok, O} ->
             B = riakc_obj:get_value(O),
             riakc_obj:update_value(O, term_to_binary([V | binary_to_term(B)]));
