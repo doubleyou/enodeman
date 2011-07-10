@@ -1,7 +1,11 @@
 -module(enodeman_stats_collector).
 -behaviour(gen_server).
 -export([
-    start_link/0
+    start_link/0,
+    new_source/4,
+    update/2,
+    remove_source/1,
+    read/3
 ]).
 -export([
     init/1,
@@ -14,6 +18,26 @@
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+new_source({Type, Name}, StartTime, Interval, Stats) ->
+    gen_server:call(
+        ?MODULE,
+        {new_source, {Type, Name, StartTime, Interval}, Stats}
+    ).
+
+update({Type, Name}, Stats) ->
+    gen_server:call(?MODULE, {update, {Type, Name}, Stats}).
+
+remove_source({Type, Name}) ->
+    gen_server:call(?MODULE, {stop, {Type, Name}}).
+
+read({Type, Name}, Metric, Date) ->
+    {ok, O} = simple_riak_client:do(get, [
+            riak_bucket(Type, Name, Metric),
+            riak_key(Date),
+            [{r, 1}]
+        ]),
+    term_to_binary(riakc_obj:get_value(O)).
 
 init(_) ->
     {ok, []}.
@@ -34,11 +58,10 @@ handle_cast({stop, Id = {Type, Name}}, State) ->
     {StartTime, Interval, Stats} = proplists:get_value(Id, State),
     [
         begin
-            O = riakc_obj:new(
-                riak_bucket(Type, Name, Metric),
-                riak_key(),
-                term_to_binary({StartTime, Interval, lists:reverse(Data)})
-            ),
+            B = riak_bucket(Type, Name, Metric),
+            K = riak_key(),
+            V = {StartTime, Interval, lists:reverse(Data)},
+            O = maybe_append_data(B, K, V),
             simple_riak_client:do(put, [O, [{w, 2}, {dw, 1}], 1000])
         end
         || {Metric, Data} <- Stats
@@ -55,6 +78,15 @@ code_change(_OldVsn, State, _Extra) ->
 
 terminate(_Reason, _State) ->
     ok.
+
+maybe_append_data(B, K, V) ->
+    case simple_riak_client:do(get, [B, K, [{r, 1}]]) of
+        {ok, O} ->
+            B = riakc_obj:get_value(O),
+            riakc_obj:update_value(O, term_to_binary([V | binary_to_term(B)]));
+        {error, notfound} ->
+            riakc_obj:new(B, K, term_to_binary([V]))
+    end.
 
 update_stats(Update, Stats) ->
     [{K, [proplists:get_value(K, Update) | V]} || {K, V} <- Stats].
