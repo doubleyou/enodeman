@@ -53,7 +53,7 @@
 		this.tree.loadJSON(data);
 		this.tree.compute();
 		this.tree.geom.translate(new $jit.Complex(-200, 0), "current");
-		this.tree.onClick(self.tree.root);
+		this.tree.onClick(this.tree.root);
 		this.build = true;
 	};
 
@@ -99,5 +99,10 @@
 			delete adj.data.$color;
 			delete adj.data.$lineWidth;
 		}
+	};
+	ENMTree.prototype.reload = function() {
+		var self = this;
+		this.init();
+		if (this.tree) this.tree.onClick(this.tree.root);
 	};
 })(jQuery);

@@ -7,3 +7,9 @@ body { font: 12px Arial; }
 	width:100%;
 	height:300px;
 }
+#add_node form {
+	padding:10px;
+}
+#add_node label {
+	width:200px;
+}

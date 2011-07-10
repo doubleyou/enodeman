@@ -18,6 +18,15 @@
     <script type="text/javascript" src="/www/js/enodeman_stats.js"></script>
 </head>
 <body>
+    <div id="add_node" class="ui-widget ui-widget-content ui-corner-all">
+	<div class="ui-widget-header ui-corner-top ui-helper-clearfix"><span class="ui-title">Add new node</span></div>
+        <form name="add_node" method="post">
+            <label for="new_node">New Node:</label> <input name="new_node" type="text" value="" /><br>
+            <label for="cookie">Cookie: (optional)</label><input type="text" name="cookie" value="" /><br>
+            <input type="submit" value="Confirm" />
+        </form>
+    </div>
+    <br>
     <table id="nodes-list"></table>
     <!--div id="nodes-pager"></div-->
     <br>
@@ -86,6 +95,19 @@
                 console.log('reload!!!');
                 nodesGrid.reload();
             }, 10000);*/
+ 	    $("#add_node form").submit(function(e) {
+	        e.preventDefault();
+		var nname = $("input[name=new_node]").val();
+		var ncookie = $("input[name=cookie]").val();
+		var button = $(this).children("input[type=submit]");
+		button.attr("disabled", true);
+		$.post("/" + nname, {"cookie":ncookie},
+			function(data) {
+				nodesGrid.reload();
+		button.attr("disabled", false);
+				tree.reload();
+		});
+	    });
         })();
     </script>
 </body>
