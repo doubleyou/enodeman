@@ -1,1 +1,4 @@
 Make a normal release using 'rebar create-node'
+Rewrite Makefile
+
+node connect fail message

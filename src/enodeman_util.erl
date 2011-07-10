@@ -7,7 +7,8 @@
     err/3,
     info/2,
     info/3,
-    now/0
+    now/0,
+    fold/0
 ]).
 
 get_env(Key) ->
@@ -39,3 +40,18 @@ logit(Func, M,F,A) ->
 now() ->
     {MegaSec, Sec, MicroSec} = erlang:now(),
     (MegaSec * 1000000 + Sec) * 1000 + MicroSec div 1000.
+
+fold() ->
+    {Sup, _} = application_master:get_child(application_controller:get_master(enodeman)),
+    fold([{none, Sup, supervisor, none}]).
+
+fold(Specs) ->
+    lists:foldl(
+        fun ({_, Pid, supervisor, _}, Acc) ->
+            [ [{pid, Pid}, {children, fold(supervisor:which_children(Pid))}]
+               | Acc];
+            ({_, Pid, worker, _}, Acc) ->
+            [ [{pid, Pid}] | Acc]
+        end,
+        [],
+        Specs).

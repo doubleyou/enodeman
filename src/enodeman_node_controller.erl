@@ -6,7 +6,6 @@
     node_processes/1,
     node_processes_grid/1,
     post_process_procs/1,
-    process_proc_metric/1,
     status/1,
     node_name/1
 ]).
@@ -135,17 +134,21 @@ post_process_procs(Procs) ->
         begin
                 Pid = list_to_binary(pid_to_list(P)),
                 UpdatedMs = [{pid, Pid} | Ms],
-                Metrics = lists:map(fun process_proc_metric/1, UpdatedMs),
+                Metrics = [process_proc_metric(P, M) || M <- UpdatedMs],
                 {Pid, Metrics}
         end || {P, Ms} <- Procs
     ].
 
-process_proc_metric({initial_call, {M, F, Arity}}) ->
+process_proc_metric(Pid, {initial_call, {proc_lib, init_p, 5}}) ->
+    {dictionary, Dict} = process_info(Pid, dictionary),
+    ActualInitialCall = proplists:get_value('$initial_call', Dict),
+    process_proc_metric(Pid, {initial_call, ActualInitialCall});
+process_proc_metric(_, {initial_call, {M, F, Arity}}) ->
     {initial_call, list_to_binary(
         atom_to_list(M) ++ ":" ++ 
         atom_to_list(F) ++ "/" ++ 
         integer_to_list(Arity))};
-process_proc_metric(V) -> V.
+process_proc_metric(_, V) -> V.
 
 update_metric(Node, {M, F, A}) ->
     case rpc:call(Node, M, F, A) of
