@@ -20,7 +20,7 @@ handle_request(Req, "/www/" ++ File) ->
 handle_request(Req, "/favicon.ico") ->
     Req:ok({"image/x-icon", ""});
 handle_request(Req, Path) ->
-    handle_request(Req, Path, Req:parse_qs()).
+    handle_request(Req, Path, Req:parse_qs() ++ Req:parse_post()).
 
 handle_request(Req, "/" ++ Path, Params) ->
     try

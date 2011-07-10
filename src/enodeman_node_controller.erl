@@ -5,7 +5,6 @@
     node_status/2,
     node_processes/1,
     node_processes_grid/1,
-    post_process_procs/1,
     status/1,
     node_name/1
 ]).
@@ -126,29 +125,29 @@ renew_procs(#state{node = Node} = State) ->
     case rpc:call(Node, enodeman_remote_module, get_processes_info, [Types]) of
         {badrpc, _} = Error -> Error;
         P -> 
-            {ok, State#state{processes = post_process_procs(P)}}
+            {ok, State#state{processes = post_process_procs(Node, P)}}
     end.
 
-post_process_procs(Procs) ->
+post_process_procs(Node, Procs) ->
     [ 
         begin
                 Pid = list_to_binary(pid_to_list(P)),
                 UpdatedMs = [{pid, Pid} | Ms],
-                Metrics = [process_proc_metric(P, M) || M <- UpdatedMs],
+                Metrics = [process_proc_metric(Node, P, M) || M <- UpdatedMs],
                 {Pid, Metrics}
         end || {P, Ms} <- Procs
     ].
 
-process_proc_metric(Pid, {initial_call, {proc_lib, init_p, 5}}) ->
-    {dictionary, Dict} = process_info(Pid, dictionary),
+process_proc_metric(Node, Pid, {initial_call, {proc_lib, init_p, 5}}) ->
+    {dictionary, Dict} = rpc:call(Node, erlang, process_info, [Pid, dictionary]),
     ActualInitialCall = proplists:get_value('$initial_call', Dict),
-    process_proc_metric(Pid, {initial_call, ActualInitialCall});
-process_proc_metric(_, {initial_call, {M, F, Arity}}) ->
+    process_proc_metric(Node, Pid, {initial_call, ActualInitialCall});
+process_proc_metric(_, _, {initial_call, {M, F, Arity}}) ->
     {initial_call, list_to_binary(
         atom_to_list(M) ++ ":" ++ 
         atom_to_list(F) ++ "/" ++ 
         integer_to_list(Arity))};
-process_proc_metric(_, V) -> V.
+process_proc_metric(_, _, V) -> V.
 
 update_metric(Node, {M, F, A}) ->
     case rpc:call(Node, M, F, A) of
