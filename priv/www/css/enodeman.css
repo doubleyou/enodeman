@@ -1,4 +1,5 @@
 .enm-extended-api { cursor: pointer; }
+.enm-graph { margin-bottom: 10px; }
 #tree {
 	position:relative;
 	overflow:hidden;

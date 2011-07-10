@@ -12,6 +12,10 @@
     <script type="text/javascript" src="/www/js/enodeman_grid.js"></script>
     <script type="text/javascript" src="/www/js/jit.js"></script>
     <script type="text/javascript" src="/www/js/enodeman_tree.js"></script>
+    <script type="text/javascript" src="/www/js/raphaeljs/raphael-min.js"></script>
+    <script type="text/javascript" src="/www/js/raphaeljs/g.raphael-min.js"></script>
+    <script type="text/javascript" src="/www/js/raphaeljs/g.line-min.js"></script>
+    <script type="text/javascript" src="/www/js/enodeman_graph.js"></script>
 </head>
 <body>
    <div id="tabs">
@@ -29,6 +33,7 @@
 	</div>
    </div>
     <!--div id="processes-pager"></div-->
+    <div id="graphs"></div>
     <script type="text/javascript">
         (function() {
 	    var tree = new ENMTree({
@@ -67,6 +72,46 @@
                 columnsSpecUrl: "/proc_metrics",
                 dataUrl: "/enodeman@127.0.0.1/processes"
             });
+
+            function ENMStats(node) {
+                $.get("/" + node + "/stats", {}, function(stats) {
+                    var graphsEl = $("#graphs");
+                    $.each(stats, function(i, stat) {
+                        var xs = [];
+                        var ys = [];
+                        $.each(stat.data, function(j, part) {
+                            xs[j] = [];
+                            for (k = 0; k < part.stats.length; k++) {
+                                xs[j].push(part.start_time + k * part.interval);
+                            }
+                            ys[j] = [];
+                            for (k = 0 ; k < part.stats.length; k++) {
+                                var v = part.stats[k];
+                                if (v > 50000) v = v.toExponential(3);
+                                ys[j].push(v);
+                            }
+                        });
+                        var id = "metric_" + stat.metric;
+                        graphsEl.append('<div id="' + id + '" class="enm-graph"></div>');
+                        var graph = new ENMGraph({
+                            targetId: id,
+                            width: 900,
+                            height: 250,
+                            caption: node + ": " + stat.metric,
+                            xTranslator: function(x) {
+                                return new Date(x).toTimeString();
+                            }
+                        });
+                        graph.add(
+                            stat.metric,
+                            xs,
+                            ys
+                        );
+                        graph.draw();
+                    });
+                }, "jsonp");
+            });
+            ENMStats("enodeman@127.0.0.1");
         })();
     </script>
 </body>
