@@ -10,7 +10,7 @@
 %    id,    % user can refer to it via this id
 %    title, % description
 %    update_info, % {module, fun, [args]}
-%    api          % more info on  http://<URL>/<NODE>/<api>
+%    extended_info    % is it possible to get extended info at /ext_info?metric=%s
 %}).
 
 %{io, {erlang, statistics, [io]}},
@@ -26,13 +26,13 @@ all_metrics_ll() -> [
         memory.total,
         <<"Total amount of memory allocated">>,
         {erlang, memory, [total]},
-        <<"/memory">>
+        true
     },
     {
         process_count,
         <<"Number of processes on the node">>,
         {erlang, memory, [total]},
-        undefined
+        false
     }
 ].
 
