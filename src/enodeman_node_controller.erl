@@ -240,9 +240,7 @@ renew_procs(#state{node = Node} = State) ->
 renew_trees(#state{node = Node} = State) ->
     Interval = enodeman_util:get_env(trees_update_interval),
     erlang:send_after(Interval, self(), renew_trees),
-    %SkipApps = enodeman_util:get_env(not_monitored_apps),
-    %SkipApps = [],
-    SkipApps = [stdlib],
+    SkipApps = enodeman_util:get_env(not_monitored_apps),
     case rpc:call(Node, enodeman_remote_module, build_trees, [SkipApps]) of
         {badrpc, _} = Error -> Error;
         Ts -> 

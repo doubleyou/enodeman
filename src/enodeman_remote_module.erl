@@ -2,7 +2,11 @@
 
 -export([
     get_processes_info/1,
-    build_trees/1
+    build_trees/1,
+
+    %TODO: remove debug func
+    build_app_tree/1,
+    fold_tree2/1
 ]).
 
 get_processes_info(Types) ->
@@ -37,6 +41,6 @@ fold_tree2(SupPid) ->
     [{SupPid, 
         lists:foldl(
             fun ({_N, P, worker, _}, Childs) -> [P | Childs];
-                ({_N, P, supervisor, _}, Childs) -> [fold_tree2(P) | Childs]
+                ({_N, P, supervisor, _}, Childs) -> fold_tree2(P) ++ Childs
             end, [], ChildSpecs)}
     ].
