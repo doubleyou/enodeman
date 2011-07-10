@@ -73,7 +73,7 @@
                 });
                 ENMStats(rowId);
             };
-            new ENMGrid({
+            var nodesGrid = new ENMGrid({
                 target: $("#nodes-list"),
                 //pager: $("#nodes-pager"),
                 caption: "Nodes",
@@ -81,6 +81,11 @@
                 dataUrl: "/nodes",
                 nodeClickHandler: nodeClickHandler
             });
+            // 4MAX
+            /*setTimeout(function() {
+                console.log('reload!!!');
+                nodesGrid.reload();
+            }, 10000);*/
         })();
     </script>
 </body>
