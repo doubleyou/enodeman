@@ -5,6 +5,7 @@
     node_to_pid/1,
     connect/2,
     connect_siblings/2,
+    which_nodes/0,
     init/1
 ]).
 
@@ -19,6 +20,9 @@ start_link() ->
         || {Node, Cookie} <- DefaultNodes
     ],
     P.
+
+which_nodes() ->
+    [Id || {Id, _, _, _} <- supervisor:which_children(?MODULE)].
 
 node_to_pid(Node) when is_atom(Node) -> node_to_pid(atom_to_list(Node));
 node_to_pid(Node) ->

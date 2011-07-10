@@ -38,8 +38,8 @@ handle_request(Req, "/" ++ Path, Params) ->
         _:{json_encode, _} -> Req:ok({"text/html", "oops, wrong JSON"})
     end.
 
-%XXX: remove debug code
 process_path_request(["nodes"],Params) ->
+    Nodes = enodeman_nodes:which_nodes(),
     enodeman_api:connect(node(), Params),
     [
         {<<"page">>,1},
@@ -47,9 +47,11 @@ process_path_request(["nodes"],Params) ->
         {<<"records">>,1},
         {<<"rows">>,[
             {struct, [
-                {<<"id">>, node()},
-                {<<"cell">>, [node(), <<"0.00">>, <<"1000.00">>]}
-            ]}]}
+                {<<"id">>, list_to_binary(Node)},
+                {<<"cell">>, [list_to_binary(Node), <<"0.00">>, <<"1000.00">>]}
+            ]}
+            || Node <- Nodes
+        ]}
     ];
 %XXX: remove debug code
 process_path_request([_N, "processes_tree"],_) ->
