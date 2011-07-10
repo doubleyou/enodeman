@@ -57,6 +57,53 @@ process_path_request(["nodes"],_) ->
             ]}]}
     ];
 %XXX: remove debug code
+process_path_request([_N, "processes_tree"],_) ->
+    [
+        {<<"id">>, <<"node01">>},
+        {<<"name">>, <<"0.1">>},
+        {<<"data">>, {struct, []}},
+        {<<"children">>, [
+            {struct, [
+                {<<"id">>, <<"node11">>},
+                {<<"name">>, <<"1.1">>},
+                {<<"data">>, {struct, []}},
+                {<<"children">>, [
+                    {struct, [
+                        {<<"id">>, <<"node21">>},
+                        {<<"name">>, <<"2.1">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]},
+                    {struct, [
+                        {<<"id">>, <<"node22">>},
+                        {<<"name">>, <<"2.2">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]}
+                ]}
+            ]},
+            {struct, [
+                {<<"id">>, <<"node12">>},
+                {<<"name">>, <<"1.2">>},
+                {<<"data">>, {struct, []}},
+                {<<"children">>, [
+                    {struct, [
+                        {<<"id">>, <<"node23">>},
+                        {<<"name">>, <<"2.3">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]},
+                    {struct, [
+                        {<<"id">>, <<"node24">>},
+                        {<<"name">>, <<"2.4">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]}
+                ]}
+            ]}
+        ]}
+    ];
+%XXX: remove debug code
 process_path_request([N, "processes"],_) ->
     case length(N) rem 2 == 0 of 
         true ->
