@@ -8,7 +8,8 @@
     status/1,
     node_name/1,
     node_processes_tree/1,
-    node_processes_tree_ui/1
+    node_processes_tree_ui/1,
+    node_processes_tree_ui2/1
 ]).
 %TODO: for debug. Remove
 -export([
@@ -82,21 +83,26 @@ post_process_tree(P) ->
     ]}.
 
 
-proc_aa(P) when is_pid(P) -> list_to_binary(pid_to_list(P));
-proc_aa(P) -> P.
+repl_points($.) -> $:;
+repl_points(V) -> V.
+
+proc_aa(P) when is_pid(P) -> 
+    PL = [repl_points(C) || C <- pid_to_list(P)],
+    list_to_binary(PL);
+proc_aa(P) when is_atom(P) -> list_to_binary(atom_to_list(P)).
 
 
 node_processes_tree_ui(Pid) -> 
     {root, Apps} =  node_processes_tree(Pid),
     [
-        {<<"id">>, root},
-        {<<"name">>, root},
+        {<<"id">>, <<"root">>},
+        {<<"name">>, <<"root">>},
         {<<"data">>, {struct, []}},
         {<<"children">>, post_process_tree(Apps)}
     ].
 
 % how it should look
-should_ui_tree() ->
+node_processes_tree_ui2(_Pid) -> 
     [
         {<<"id">>, <<"node01">>},
         {<<"name">>, <<"0.1">>},
