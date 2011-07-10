@@ -2,7 +2,7 @@
 
 -export([
     get_processes_info/1,
-    build_tree/0
+    build_trees/1
 ]).
 
 get_processes_info(Types) ->
@@ -17,10 +17,8 @@ get_processes_info(Types) ->
         } || P <- processes() 
     ].
 
-skip_apps() -> enodeman_util:get_env(not_monitored_apps).
-
-build_tree() ->
-    Apps = get_apps(),
+build_trees(SkipApps) ->
+    Apps = get_apps(SkipApps),
     [{A, build_app_tree(A)} || A <- Apps].
 
 build_app_tree(App) ->
@@ -41,8 +39,8 @@ fold_tree([SupPid | Rest], Acc) ->
         end, {[], Rest}, ChildSpecs),
     fold_tree(NewRest, [{SupPid, CurChilds} | Acc]).
 
-get_apps() ->
+get_apps(SkipApps) ->
     [A 
         || {A, _, _} <- application:which_applications(),
-        not lists:member(A, skip_apps())
+        not lists:member(A, SkipApps)
     ].

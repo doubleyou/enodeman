@@ -24,7 +24,8 @@
     node,
     cookie,
     metrics = [],
-    processes = []
+    processes = [],
+    trees = []
 }).
 
 %%%%%%%%%%%%%%%%%%%      API       %%%%%%%%%%%%%%%%%%%%%%%%
@@ -61,14 +62,15 @@ init([Parent, NodeString, Cookie]) ->
             {stop, Error};
         _ ->
             State = #state{ parent = Parent, node = Node, cookie = Cookie },
-            %TODO :redesign
-            case renew_procs(State) of
-                {ok, State1} -> 
-                    case renew_metrics(State1) of
-                        {ok, State2} -> {ok, State2};
-                        Error -> {stop, Error}
-                    end;
-                Error -> {stop, Error}
+            Res = lists:foldl(
+                fun (Fun, {ok, S}) -> Fun(S);
+                    (_,Error) -> Error
+                end, {ok, State}, 
+                [fun renew_metrics/1, fun renew_procs/1, fun renew_trees/1]
+            ),
+            case Res of
+                {ok, NewState} -> {ok, NewState};
+                E -> {stop, E}
             end
     end.
 
@@ -93,6 +95,11 @@ handle_info(renew_metrics, State) ->
     end;
 handle_info(renew_procs, State) ->
     case renew_procs(State) of
+        {ok, State1} -> {noreply, State1};
+        Error -> {stop, Error, State}
+    end;
+handle_info(renew_trees, State) ->
+    case renew_metrics(State) of
         {ok, State1} -> {noreply, State1};
         Error -> {stop, Error, State}
     end;
@@ -129,6 +136,16 @@ renew_procs(#state{node = Node} = State) ->
         {badrpc, _} = Error -> Error;
         P -> 
             {ok, State#state{processes = post_process_procs(P)}}
+    end.
+
+renew_trees(#state{node = Node} = State) ->
+    Interval = enodeman_util:get_env(trees_update_interval),
+    erlang:send_after(Interval, self(), renew_trees),
+    SkipApps = enodeman_util:get_env(not_monitored_apps),
+    case rpc:call(Node, enodeman_remote_module, build_trees, [SkipApps]) of
+        {badrpc, _} = Error -> Error;
+        T -> 
+            {ok, State#state{trees = post_process_trees(T)}}
     end.
 
 post_process_procs(Procs) ->
@@ -197,3 +214,5 @@ process_info_to_row_grid({Pid, PL}) ->
             {<<"cell">>, [V || {_,V} <- PL]}
         ]
     }.
+
+post_process_trees(T) -> T.
