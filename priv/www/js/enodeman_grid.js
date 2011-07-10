@@ -1,7 +1,8 @@
 (function($) {
 	window.ENMGrid = function(config) {
+		if (!config.target || !config.target.length) return;
 		this.built = false;
-		this.config = $.extend({}, config);
+		this.config = config;
 		this.config.targetId = this.config.target.attr("id");
 		this.init();
 	};
