@@ -38,7 +38,6 @@ init([Parent, NodeString, Cookie]) ->
     Node = list_to_atom(NodeString),
     erlang:set_cookie(node(), Cookie),
     true = net_kernel:connect_node(Node),
-    error_logger:format("~p:init Node:~p~n", [?MODULE, Node]),
 
     State = #state{
         parent = Parent,
