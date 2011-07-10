@@ -53,8 +53,10 @@
 			gridComplete: function() {
 				var els = target.find("tr.jqgrow");
 				if (self.config.nodeClickHandler) {
-					els.find("td:first").css("cursor", "pointer"),
-					self.config.nodeClickHandler($(els[0]).attr("id"));
+					els.find("td:first").css("cursor", "pointer");
+					var id = $(els[0]).attr("id");
+					target.jqGrid("setSelection", id, false);
+					self.config.nodeClickHandler(id);
 				}
 			},
 			onCellSelect: function(rowId, columnId, cellContent, element) {
