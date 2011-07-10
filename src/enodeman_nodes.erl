@@ -8,7 +8,10 @@
 ]).
 
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    P = supervisor:start_link({local, ?MODULE}, ?MODULE, []),
+    DefaultNodes = enodeman_util:get_env(default_nodes),
+    [connect(Node, Cookie) || {Node, Cookie} <- DefaultNodes],
+    P.
 
 node_to_pid(Node) when is_atom(Node) -> node_to_pid(atom_to_list(Node));
 node_to_pid(Node) ->
