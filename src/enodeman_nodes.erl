@@ -10,6 +10,7 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
+node_to_pid(Node) when is_atom(Node) -> node_to_pid(atom_to_list(Node));
 node_to_pid(Node) ->
     {_, ParentPid, _, _} = lists:keyfind(Node, 1, supervisor:which_children(?MODULE)),
     controller_by_sup(ParentPid).
