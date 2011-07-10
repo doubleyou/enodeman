@@ -6,7 +6,9 @@
     node_metrics/0,
     proc_metrics/0,
     processes_raw/2,
-    processes/2
+    processes/2,
+    processes_tree/2,
+    processes_tree_raw/2
 ]).
 
 %  :8080/<NODE>/<FUNC>?a=b&c=d
@@ -32,7 +34,13 @@ processes_raw(Pid, _Params) ->
 
 % hack for the grid
 processes(Pid, _Params) ->
-    enodeman_node_controller:node_processes_grid(Pid).
+    enodeman_node_controller:node_processes_ui(Pid).
+
+processes_tree_raw(Pid, _Params) ->
+    enodeman_node_controller:node_processes_tree(Pid).
+
+processes_tree(Pid, _Params) ->
+    enodeman_node_controller:node_processes_tree_ui(Pid).
 
 stats(Pid, Params) ->
     Node = enodeman_node_controller:node_name(Pid),

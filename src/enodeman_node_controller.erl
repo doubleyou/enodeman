@@ -4,9 +4,15 @@
     start_link/3,
     node_status/2,
     node_processes/1,
-    node_processes_grid/1,
+    node_processes_ui/1,
     status/1,
-    node_name/1
+    node_name/1,
+    node_processes_tree/1,
+    node_processes_tree_ui/1
+]).
+%TODO: for debug. Remove
+-export([
+    post_process_tree/1
 ]).
 -export([
     init/1,
@@ -22,7 +28,8 @@
     node,
     cookie,
     metrics = [],
-    processes = []
+    processes = [],
+    trees = []
 }).
 
 %%%%%%%%%%%%%%%%%%%      API       %%%%%%%%%%%%%%%%%%%%%%%%
@@ -33,6 +40,15 @@ node_status(Pid, _Params) ->
 node_processes(Pid) -> 
     gen_server:call(Pid, node_processes).
 
+node_processes_ui(Pid) ->
+    Processes = node_processes(Pid),
+    [
+        {<<"page">>,1},
+        {<<"total">>,1},
+        {<<"records">>,2},
+        {<<"rows">>, [process_info_to_row_grid(P) || P <- Processes]}
+    ].
+
 start_link(Parent, NodeString, Cookie) ->
     gen_server:start_link(?MODULE, [Parent, NodeString, Cookie], []).
 
@@ -41,6 +57,91 @@ node_name(Pid) ->
 
 status(Pid) ->
     gen_server:call(Pid, status).
+
+node_processes_tree(Pid) ->
+    Tree = {root, gen_server:call(Pid, node_processes_tree)},
+    Tree.
+  
+
+post_process_tree([]) -> [];
+post_process_tree({P, Childs}) ->
+    {struct, [
+        {<<"id">>, proc_aa(P)},
+        {<<"name">>, proc_aa(P)},
+        {<<"data">>, {struct, []}},
+        {<<"children">>, post_process_tree(Childs)}
+    ]};
+post_process_tree([P | Rest]) ->
+    [ post_process_tree(P) | post_process_tree(Rest) ];
+post_process_tree(P) ->
+    {struct, [
+        {<<"id">>, proc_aa(P)},
+        {<<"name">>, proc_aa(P)},
+        {<<"data">>, {struct, []}},
+        {<<"children">>, []}
+    ]}.
+
+
+proc_aa(P) when is_pid(P) -> list_to_binary(pid_to_list(P));
+proc_aa(P) -> P.
+
+
+node_processes_tree_ui(Pid) -> 
+    {root, Apps} =  node_processes_tree(Pid),
+    [
+        {<<"id">>, root},
+        {<<"name">>, root},
+        {<<"data">>, {struct, []}},
+        {<<"children">>, post_process_tree(Apps)}
+    ].
+
+% how it should look
+should_ui_tree() ->
+    [
+        {<<"id">>, <<"node01">>},
+        {<<"name">>, <<"0.1">>},
+        {<<"data">>, {struct, []}},
+        {<<"children">>, 
+            [{struct, 
+               [{<<"id">>, <<"node11">>},
+                {<<"name">>, <<"1.1">>},
+                {<<"data">>, {struct, []}},
+                {<<"children">>, 
+                   [{struct, [
+                        {<<"id">>, <<"node21">>},
+                        {<<"name">>, <<"2.1">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]},
+                    {struct, [
+                        {<<"id">>, <<"node22">>},
+                        {<<"name">>, <<"2.2">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]}
+                ]}
+            ]},
+            {struct, [
+                {<<"id">>, <<"node12">>},
+                {<<"name">>, <<"1.2">>},
+                {<<"data">>, {struct, []}},
+                {<<"children">>, [
+                    {struct, [
+                        {<<"id">>, <<"node23">>},
+                        {<<"name">>, <<"2.3">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]},
+                    {struct, [
+                        {<<"id">>, <<"node24">>},
+                        {<<"name">>, <<"2.4">>},
+                        {<<"data">>, {struct, []}},
+                        {<<"children">>, []}
+                    ]}
+                ]}
+            ]}
+        ]}
+    ].
 
 %%%%%%%%%%%%%%%%%%%% gen_server callback functions %%%%%%%%%%%%%%
 
@@ -59,14 +160,15 @@ init([Parent, NodeString, Cookie]) ->
             {stop, Error};
         _ ->
             State = #state{ parent = Parent, node = Node, cookie = Cookie },
-            %TODO :redesign
-            case renew_procs(State) of
-                {ok, State1} -> 
-                    case renew_metrics(State1) of
-                        {ok, State2} -> {ok, State2};
-                        Error -> {stop, Error}
-                    end;
-                Error -> {stop, Error}
+            Res = lists:foldl(
+                fun (Fun, {ok, S}) -> Fun(S);
+                    (_,Error) -> Error
+                end, {ok, State}, 
+                [fun renew_metrics/1, fun renew_procs/1, fun renew_trees/1]
+            ),
+            case Res of
+                {ok, NewState} -> {ok, NewState};
+                E -> {stop, E}
             end
     end.
 
@@ -76,6 +178,8 @@ handle_call(node_status, _From, #state{metrics=Metrics} = State) ->
     {reply, Metrics, State};
 handle_call(node_processes, _From, #state{processes=P} = State) ->
     {reply, P, State};
+handle_call(node_processes_tree, _From, #state{trees = T} = State) ->
+    {reply, T, State};
 handle_call(node_name, _From, #state{node=N} = State) ->
     {reply, N, State};
 handle_call(_Msg, _From, State) ->
@@ -91,6 +195,11 @@ handle_info(renew_metrics, State) ->
     end;
 handle_info(renew_procs, State) ->
     case renew_procs(State) of
+        {ok, State1} -> {noreply, State1};
+        Error -> {stop, Error, State}
+    end;
+handle_info(renew_trees, State) ->
+    case renew_trees(State) of
         {ok, State1} -> {noreply, State1};
         Error -> {stop, Error, State}
     end;
@@ -126,6 +235,16 @@ renew_procs(#state{node = Node} = State) ->
         {badrpc, _} = Error -> Error;
         P -> 
             {ok, State#state{processes = post_process_procs(Node, P)}}
+    end.
+
+renew_trees(#state{node = Node} = State) ->
+    Interval = enodeman_util:get_env(trees_update_interval),
+    erlang:send_after(Interval, self(), renew_trees),
+    SkipApps = enodeman_util:get_env(not_monitored_apps),
+    case rpc:call(Node, enodeman_remote_module, build_trees, [SkipApps]) of
+        {badrpc, _} = Error -> Error;
+        Ts -> 
+            {ok, State#state{trees = Ts}}
     end.
 
 post_process_procs(Node, Procs) ->
@@ -170,34 +289,17 @@ reload_remote_module(Node) ->
     rpc:call(Node, code, load_binary, 
         [enodeman_remote_module, "enodeman_remote_module.erl", B]).
 
-node_processes_grid(Pid) ->
-    Processes = node_processes(Pid),
-    _Need = [
-                {<<"page">>,1},
-                {<<"total">>,1},
-                {<<"records">>,2},
-                {<<"rows">>,[
-                        {struct, [
-                                {<<"id">>,process_name_1},
-                                {<<"cell">>, [process_name_1, <<"aaa:bbb/2">>, <<"10000">>, <<"10000">>, <<"2">>]}
-                            ]},
-                        {struct, [
-                                {<<"id">>,process_name_2},
-                                {<<"cell">>, [process_name_2, <<"bbb:ccc/2">>, <<"10000">>, <<"10000">>, <<"2">>]}
-                            ]}
-                    ]
-                }
-            ],
-    [
-        {<<"page">>,1},
-        {<<"total">>,1},
-        {<<"records">>,2},
-        {<<"rows">>, [process_info_to_row_grid(P) || P <- Processes]}
-    ].
-
 process_info_to_row_grid({Pid, PL}) -> 
     {struct, [
             {<<"id">>, Pid},
             {<<"cell">>, [V || {_,V} <- PL]}
         ]
     }.
+
+%update_proc_info(P, Ps) ->
+%    Pid = list_to_binary(pid_to_list(P)),
+%    case proplists:get_value(Pid, Ps) of
+%        undefined -> Pid;
+%        V -> V
+%    end.
+
