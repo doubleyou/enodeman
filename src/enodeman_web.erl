@@ -25,8 +25,14 @@ handle_request(Req, Path) ->
 handle_request(Req, "/" ++ Path, Params) ->
     try
         Words = re:split(Path, "\/", [{return, list}]),
+        error_logger:format("Params:~p~n", [Params]),
         Result = process_path_request(Words, Params),
-        Req:ok({"application/javascript", mochijson2:encode(Result)})
+        Encoded = mochijson2:encode(Result),
+        MaybeJSONP = case proplists:get_value("callback", Params) of
+            undefined -> Encoded;
+            V -> V ++ "(" ++ Encoded ++ ");"
+        end,
+        Req:ok({"application/javascript", MaybeJSONP})
     catch 
         _:{json_encode, _} -> Req:ok("oops, wrong JSON")
     end.
