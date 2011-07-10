@@ -1,8 +1,7 @@
 -module(enodeman_stats_collector).
 -behaviour(gen_server).
 -export([
-    start_link/3,
-    store/2
+    start_link/0
 ]).
 -export([
     init/1,
@@ -13,45 +12,38 @@
     terminate/2
 ]).
 
--record(state, {
-    type,
-    name,
-    start_time,
-    interval,
-    stats
-}).
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-start_link({Type, Name}, StartTime, Interval) ->
-    gen_server:start_link(?MODULE, [{Type, Name}, StartTime, Interval], []).
-
-store(Pid, Stats) ->
-    gen_server:cast(Pid, {store, Stats}).
-
-init([{Type, Name}, StartTime, Interval]) ->
-    {ok, #state{
-        type = Type, name = Name,
-        start_time = StartTime, interval = Interval
-    }}.
+init(_) ->
+    {ok, []}.
 
 handle_call(_Msg, _From, State) ->
     {noreply, State}.
 
-handle_cast({store, Stats}, State = #state{ stats = [] }) ->
-    {noreply, State#state{ stats = Stats }};
-handle_cast({store, Stats}, State = #state{ stats = S }) ->
-    {noreply, State#state{ stats = update_stats(Stats, S) }};
-handle_cast(flush, State = #state{ stats = Stats, interval = Interval,
-                    start_time = StartTime, type = Type, name = Name }) ->
+handle_cast({new_source, {Type, Name, StartTime, Interval}, Stats}, State) ->
+    {noreply, [{{Type, Name}, {StartTime, Interval, Stats}} | State]};
+handle_cast({update, Id, Update}, State) ->
+    {StartTime, Interval, OldStats} = proplists:get_value(Id, State),
+    NewStats = update_stats(Update, OldStats),
+    {
+        noreply,
+        lists:keyreplace(Id, 1, State, {Id, {StartTime, Interval, NewStats}})
+    };
+handle_cast({stop, Id = {Type, Name}}, State) ->
+    {StartTime, Interval, Stats} = proplists:get_value(Id, State),
     [
         begin
-            D = {StartTime, Interval, V},
-            Obj = riakc_obj:new(riak_bucket(Type, Name, Metric), riak_key(), D),
-            simple_riak_client:do(put, [Obj, [{w, 1}, {dw, 1}], 1000])
+            O = riakc_obj:new(
+                riak_bucket(Type, Name, Metric),
+                riak_key(),
+                term_to_binary({StartTime, Interval, lists:reverse(Data)})
+            ),
+            simple_riak_client:do(put, [O, [{w, 2}, {dw, 1}], 1000])
         end
-        || {Metric, V} <- Stats
+        || {Metric, Data} <- Stats
     ],
-    erlang:garbage_collect(),
-    {noreply, State};
+    {noreply, lists:keydelete(Id, 1, State)};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -85,5 +77,7 @@ ensure_binary(A) when is_atom(A) ->
     ensure_binary(atom_to_list(A));
 ensure_binary(L) when is_list(L) ->
     list_to_binary(L);
+ensure_binary(P) when is_pid(P) ->
+    ensure_binary(pid_to_list(P));
 ensure_binary(B) when is_binary(B) ->
     B.
