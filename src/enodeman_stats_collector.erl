@@ -166,8 +166,8 @@ reduce_stats(MaxPoints, {StartTime, Interval, Stats}) ->
 split_by(N, L) when length(L) > N ->
     {Pref, Suff} = lists:split(N, L),
     [Pref | split_by(N, Suff)];
-split_by(_, L) ->
-    [L].
+split_by(_, _) ->
+    [].
 
 avg_quad(L) ->
     Total = length(L),
