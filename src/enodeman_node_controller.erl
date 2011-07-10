@@ -3,10 +3,12 @@
 -export([
     start_link/3,
     node_status/2,
-    node_processes/2,
+    node_processes/1,
+    node_processes_grid/1,
     post_process_procs/1,
     process_proc_metric/1,
-    get_nodename/1
+    get_nodename/1,
+    status/1
 ]).
 -export([
     init/1,
@@ -30,7 +32,7 @@
 node_status(Pid, _Params) -> 
     gen_server:call(Pid, node_status).
 
-node_processes(Pid, _Params) -> 
+node_processes(Pid) -> 
     gen_server:call(Pid, node_processes).
 
 start_link(Parent, NodeString, Cookie) ->
@@ -39,9 +41,13 @@ start_link(Parent, NodeString, Cookie) ->
 get_nodename(Pid) ->
     gen_server:call(Pid, get_nodename).
 
+status(Pid) ->
+    gen_server:call(Pid, status).
+
 %%%%%%%%%%%%%%%%%%%% gen_server callback functions %%%%%%%%%%%%%%
 
 init([Parent, NodeString, Cookie]) ->
+    %enodeman_util:info(?MODULE, "init(~p)~n", [[Parent, NodeString, Cookie]]),
     Node = list_to_atom(NodeString),
     erlang:set_cookie(node(), Cookie),
     true = net_kernel:hidden_connect(Node),
@@ -71,7 +77,7 @@ handle_call(status, _From, State) ->
 handle_call(node_status, _From, #state{metrics=Metrics} = State) ->
     {reply, Metrics, State};
 handle_call(node_processes, _From, #state{processes=P} = State) ->
-    {reply, lists:sublist(P, 5), State};
+    {reply, P, State};
 handle_call(get_nodename, _From, #state{node=N} = State) ->
     {reply, N, State};
 handle_call(_Msg, _From, State) ->
@@ -118,7 +124,8 @@ renew_metrics(#state{node = Node} = State) ->
 renew_procs(#state{node = Node} = State) ->
     Interval = enodeman_util:get_env(processes_update_interval),
     erlang:send_after(Interval, self(), renew_procs),
-    case rpc:call(Node, enodeman_remote_module, get_processes_info, []) of
+    Types = enodeman_proc_metrics:get_names(),
+    case rpc:call(Node, enodeman_remote_module, get_processes_info, [Types]) of
         {badrpc, _} = Error -> Error;
         P -> 
             {ok, State#state{processes = post_process_procs(P)}}
@@ -128,12 +135,9 @@ post_process_procs(Procs) ->
     [ 
         begin
                 Pid = list_to_binary(pid_to_list(P)),
-                Metrics = lists:map(fun process_proc_metric/1, Ms),
-                PidUI = case proplists:get_value(registered_name, Metrics) of
-                    <<"">> -> Pid;
-                    V -> V
-                end,
-                {PidUI, Metrics}
+                UpdatedMs = [{pid, Pid} | Ms],
+                Metrics = lists:map(fun process_proc_metric/1, UpdatedMs),
+                {Pid, Metrics}
         end || {P, Ms} <- Procs
     ].
 
@@ -142,8 +146,6 @@ process_proc_metric({initial_call, {M, F, Arity}}) ->
         atom_to_list(M) ++ ":" ++ 
         atom_to_list(F) ++ "/" ++ 
         integer_to_list(Arity))};
-process_proc_metric({pid, P}) -> 
-    {pid, list_to_binary(pid_to_list(P))};
 process_proc_metric(V) -> V.
 
 update_metric(Node, {M, F, A}) ->
@@ -163,3 +165,35 @@ reload_remote_module(Node) ->
     {ok, B} = file:read_file(code:which(enodeman_remote_module)),
     rpc:call(Node, code, load_binary, 
         [enodeman_remote_module, "enodeman_remote_module.erl", B]).
+
+node_processes_grid(Pid) ->
+    Processes = node_processes(Pid),
+    _Need = [
+                {<<"page">>,1},
+                {<<"total">>,1},
+                {<<"records">>,2},
+                {<<"rows">>,[
+                        {struct, [
+                                {<<"id">>,process_name_1},
+                                {<<"cell">>, [process_name_1, <<"aaa:bbb/2">>, <<"10000">>, <<"10000">>, <<"2">>]}
+                            ]},
+                        {struct, [
+                                {<<"id">>,process_name_2},
+                                {<<"cell">>, [process_name_2, <<"bbb:ccc/2">>, <<"10000">>, <<"10000">>, <<"2">>]}
+                            ]}
+                    ]
+                }
+            ],
+    [
+        {<<"page">>,1},
+        {<<"total">>,1},
+        {<<"records">>,2},
+        {<<"rows">>, [process_info_to_row_grid(P) || P <- Processes]}
+    ].
+
+process_info_to_row_grid({Pid, PL}) -> 
+    {struct, [
+            {<<"id">>, Pid},
+            {<<"cell">>, [V || {_,V} <- PL]}
+        ]
+    }.

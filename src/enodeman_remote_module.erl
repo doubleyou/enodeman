@@ -1,11 +1,10 @@
 -module(enodeman_remote_module).
 
 -export([
-    get_processes_info/0
+    get_processes_info/1
 ]).
 
-get_processes_info() ->
-    Types = [registered_name, initial_call, memory, reductions, message_queue_len],
+get_processes_info(Types) ->
     [ 
         { P, 
             [

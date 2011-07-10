@@ -23,12 +23,10 @@ handle_request(Req, Path) ->
     handle_request(Req, Path, Req:parse_qs()).
 
 handle_request(Req, "/" ++ Path, Params) ->
-    %enodeman_util:info(?MODULE, "handle_request ~p (~p)", [Path, Params]),
     try
         Words = re:split(Path, "\/", [{return, list}]),
         Result = process_path_request(Words, Params),
-        %enodeman_util:info(?MODULE, "Result:~p~n", [Result]),
-        %enodeman_util:info("handle_request result:~n~p~n", [Result]),
+        %enodeman_util:info(?MODULE, "handle_request ~p (~p)~nResult:~n~p~n", [Path, Params, Result]),
 
         Encoded = mochijson2:encode(Result),
         MaybeJSONP = case proplists:get_value("callback", Params) of
@@ -41,19 +39,16 @@ handle_request(Req, "/" ++ Path, Params) ->
     end.
 
 %XXX: remove debug code
-process_path_request(["nodes"],_) ->
+process_path_request(["nodes"],Params) ->
+    enodeman_api:connect(node(), Params),
     [
         {<<"page">>,1},
         {<<"total">>,1},
-        {<<"records">>,2},
+        {<<"records">>,1},
         {<<"rows">>,[
             {struct, [
-                {<<"id">>,node1},
-                {<<"cell">>, [node1, <<"0.00">>, <<"1000.00">>]}
-            ]},
-            {struct, [
-                {<<"id">>,node2},
-                {<<"cell">>, [node2, <<"0.00">>, <<"1000.00">>]}
+                {<<"id">>, node()},
+                {<<"cell">>, [node(), <<"0.00">>, <<"1000.00">>]}
             ]}]}
     ];
 %XXX: remove debug code
@@ -104,39 +99,6 @@ process_path_request([_N, "processes_tree"],_) ->
         ]}
     ];
 %XXX: remove debug code
-process_path_request([N, "processes"],_) ->
-    case length(N) rem 2 == 0 of 
-        true ->
-            [
-                {<<"page">>,1},
-                {<<"total">>,1},
-                {<<"records">>,2},
-                {<<"rows">>,[
-                        {struct, [
-                                {<<"id">>,process_name_1},
-                                {<<"cell">>, [process_name_1, <<"aaa:bbb/2">>, <<"10000">>, <<"10000">>, <<"2">>]}
-                            ]},
-                        {struct, [
-                                {<<"id">>,process_name_2},
-                                {<<"cell">>, [process_name_2, <<"bbb:ccc/2">>, <<"10000">>, <<"10000">>, <<"2">>]}
-                            ]}]}
-            ];
-        _ -> 
-            [
-                {<<"page">>,1},
-                {<<"total">>,1},
-                {<<"records">>,2},
-                {<<"rows">>,[
-                        {struct, [
-                                {<<"id">>,process_name_3},
-                                {<<"cell">>, [process_name_3, <<"dddddd:eeeee/2">>, <<"10000">>, <<"10000">>, <<"2">>, null]}
-                            ]},
-                        {struct, [
-                                {<<"id">>,process_name_4},
-                                {<<"cell">>, [process_name_4, <<"fffffff:gggggg/2">>, <<"10000">>, <<"10000">>, <<"2">>, null]}
-                            ]}]}
-            ]
-    end;
 process_path_request(["node_metrics"],_) ->
     enodeman_api:node_metrics();
 process_path_request(["proc_metrics"],_) ->
