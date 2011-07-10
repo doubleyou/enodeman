@@ -1,1 +1,2 @@
 Make a normal release using 'rebar create-node'
+enodeman_nodes:connect/2 should print out some diagnostic if failed (instead of crash ;) )

@@ -2,7 +2,7 @@
 
 -export([
     get_processes_info/1,
-    build_trees/1
+    build_trees/1,
 ]).
 
 get_processes_info(Types) ->
@@ -17,35 +17,26 @@ get_processes_info(Types) ->
         } || P <- processes() 
     ].
 
+%TODO: it uses a lot of memory on remote machine
+% as it doesn't use :qa
 build_trees(SkipApps) ->
-    Apps = get_apps(SkipApps),
+    Apps = [A || {A, _, _} <- application:which_applications(),
+        not lists:member(A, SkipApps) ],
     [{A, build_app_tree(A)} || A <- Apps].
 
 build_app_tree(App) ->
-    PidMaster = application_controller:get_master(App),
-    {PidSup, _Name} = application_master:get_child(PidMaster),
-    fold_tree([PidSup], [{PidMaster, [PidSup]}]).
-
-% 1 argument. Pid of Supervisor
-% 2 argument. Acc:  ([{PidSup, [PidChilds]}])
-fold_tree([], Acc) -> Acc;
-fold_tree([SupPid | Rest], Acc) -> 
-    ChildSpecs = supervisor:which_children(SupPid),
-    {CurChilds,NewRest} = lists:foldl(
-        fun ({_N, Pid, worker, _}, {Childs, Sups}) -> 
-                {[Pid | Childs], Sups};
-            ({_N, Pid, supervisor, _}, {Childs, Sups}) -> 
-                {[Pid | Childs], [Pid | Sups]}
-        end, {[], Rest}, ChildSpecs),
-    fold_tree(NewRest, [{SupPid, CurChilds} | Acc]).
-
-get_apps(SkipApps) ->
-    Apps = [A 
-        || {A, _, _} <- application:which_applications(),
-        not lists:member(A, SkipApps)
-    ],
-    %TODO: 
-    case Apps of
-        [] -> [];
-        [A | _] -> [A]
+    case application_controller:get_master(App) of
+        undefined -> [];
+        PidMaster ->
+            {PidSup, _Name} = application_master:get_child(PidMaster),
+            [{PidMaster, fold_tree2(PidSup)}]
     end.
+
+fold_tree2(SupPid) -> 
+    ChildSpecs = supervisor:which_children(SupPid),
+    [{SupPid, 
+        lists:foldl(
+            fun ({_N, P, worker, _}, Childs) -> [P | Childs];
+                ({_N, P, supervisor, _}, Childs) -> [fold_tree2(P) | Childs]
+            end, [], ChildSpecs)}
+    ].
