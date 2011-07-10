@@ -21,5 +21,5 @@ node_metrics() ->
     enodeman_node_metrics:get_descr().
 
 proc_metrics() ->
-    []. %FIXME: make the same as with node_metrics
+    enodeman_proc_metrics:get_descr().
     

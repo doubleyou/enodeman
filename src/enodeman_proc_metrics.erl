@@ -36,7 +36,10 @@ all_metrics() ->
     [ {I,U} || {I,_,U,_} <- all_metrics_ll() ].
 
 get_descr() -> 
-    [ 
-        [{id, I},{title, T},{api,A}] 
-        || {I,T,_,A} <- all_metrics_ll()
+    [
+        [{id, proc},{title, <<"process name or pid">>}, {api, false}] | 
+        [ 
+            [{id, I},{title, T},{api,A}] 
+            || {I,T,_,A} <- all_metrics_ll()
+        ]
     ].
