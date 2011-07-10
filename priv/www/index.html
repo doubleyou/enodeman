@@ -5,17 +5,54 @@
     <link rel="stylesheet" href="/www/css/ui.jqgrid.css">
     <link rel="stylesheet" href="/www/css/enodeman.css">
     <script type="text/javascript" src="/www/js/jquery.js"></script>
+    <script type="text/javascript" src="/www/js/jquery-ui-1.8.14.custom.min.js"></script>
+    <script type="text/javascript" src="/www/js/grid.locale-en.js"></script>
     <script type="text/javascript" src="/www/js/grid.locale-en.js"></script>
     <script type="text/javascript" src="/www/js/jquery.jqGrid.min.js"></script>
     <script type="text/javascript" src="/www/js/enodeman_grid.js"></script>
+    <script type="text/javascript" src="/www/js/jit.js"></script>
+    <script type="text/javascript" src="/www/js/enodeman_tree.js"></script>
 </head>
 <body>
-    <table id="nodes-list"></table>
-    <!--div id="nodes-pager"></div-->
-    <table id="processes-list"></table>
+   <div id="tabs">
+	<ul>
+		<li><a href="#tabs-1">Grid</a></li>
+		<li><a href="#tabs-2">Tree</a></li>
+	</ul>
+	<div id="tabs-1">
+		<table id="nodes-list"></table>
+    		<!--div id="nodes-pager"></div-->
+    		<table id="processes-list"></table>
+   	</div>
+	<div id="tabs-2">
+    		<div id="tree"></div>
+	</div>
+   </div>
     <!--div id="processes-pager"></div-->
     <script type="text/javascript">
         (function() {
+	    var tree = new ENMTree({
+		targetId: "tree",
+		dataURL: "/nodes/processes_tree",
+		duration: 800,
+		levelDistance: 50,
+		node: {
+			height: 20,
+			width: 60,
+			type: "rectangle",
+			color: "#aaa"
+		},
+		edge: {
+			type: "bezier"
+		}
+	   });
+	    $("#tabs").tabs({
+		show: function(e, ui) {
+			if (ui.panel.id == "tabs-2") {
+				tree.show(tree.data);
+			}
+		}
+	    });
             new ENMGrid({
                 target: $("#nodes-list"),
                 //pager: $("#nodes-pager"),
