@@ -24,9 +24,6 @@
     processes = []
 }).
 
--define(NODE_METRICS_UPDATE_INTERVAL, 1000).
--define(PROCESSES_UPDATE_INTERVAL, 1000).
-
 %%%%%%%%%%%%%%%%%%%      API       %%%%%%%%%%%%%%%%%%%%%%%%
 
 node_status(Pid, _Params) -> 
