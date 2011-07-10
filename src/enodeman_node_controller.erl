@@ -7,8 +7,8 @@
     node_processes_grid/1,
     post_process_procs/1,
     process_proc_metric/1,
-    get_nodename/1,
-    status/1
+    status/1,
+    node_name/1
 ]).
 -export([
     init/1,
@@ -38,8 +38,8 @@ node_processes(Pid) ->
 start_link(Parent, NodeString, Cookie) ->
     gen_server:start_link(?MODULE, [Parent, NodeString, Cookie], []).
 
-get_nodename(Pid) ->
-    gen_server:call(Pid, get_nodename).
+node_name(Pid) ->
+    gen_server:call(Pid, node_name).
 
 status(Pid) ->
     gen_server:call(Pid, status).
@@ -78,7 +78,7 @@ handle_call(node_status, _From, #state{metrics=Metrics} = State) ->
     {reply, Metrics, State};
 handle_call(node_processes, _From, #state{processes=P} = State) ->
     {reply, P, State};
-handle_call(get_nodename, _From, #state{node=N} = State) ->
+handle_call(node_name, _From, #state{node=N} = State) ->
     {reply, N, State};
 handle_call(_Msg, _From, State) ->
     {noreply, State}.

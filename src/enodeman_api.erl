@@ -29,10 +29,20 @@ proc_metrics() ->
 processes_raw(Pid, _Params) ->
     {struct, enodeman_node_controller:node_processes(Pid)}.
 
-stats(Pid, Params) ->
-    Node = enodeman_stats_collector:node_name(Pid),
-    enodeman_stats_collector:get_stats(Node, Params).
-
 % hack for the grid
 processes(Pid, _Params) ->
     enodeman_node_controller:node_processes_grid(Pid).
+
+stats(Pid, Params) ->
+    Node = enodeman_node_controller:node_name(Pid),
+    RawStats = enodeman_stats_collector:get_stats(Node, Params),
+    [
+        {struct, [
+            {metric, M},
+            {data, [
+                {struct, [{start_time, ST}, {interval, I}, {stats, S}]}
+                || {ST, I, S} <- Curve
+            ]}
+        ]}
+        || {M, Curve} <- RawStats
+    ].

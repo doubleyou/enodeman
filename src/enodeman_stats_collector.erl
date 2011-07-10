@@ -5,7 +5,9 @@
     new_source/4,
     update/2,
     remove_source/1,
+    flush/1,
     read_day/3,
+    split_by/2,
     get_stats/2
 ]).
 -export([
@@ -32,17 +34,41 @@ update({Type, Name}, Stats) ->
 remove_source({Type, Name}) ->
     gen_server:cast(?MODULE, {stop, {Type, Name}}).
 
+flush({Type, Name}) ->
+    gen_server:call(?MODULE, {flush, {Type, Name}}).
+
 read_day({Type, Name}, Metric, Date) ->
-    {ok, O} = simple_riak_pool:do(get, [
-            riak_bucket(Type, Name, Metric),
-            riak_key(Date),
-            [{r, 1}]
-        ]),
-    binary_to_term(riakc_obj:get_value(O)).
+    OldData = case simple_riak_pool:do(get, [riak_bucket(Type, Name, Metric), riak_key(Date), [{r, 1}]]) of
+        {ok, O} -> binary_to_term(riakc_obj:get_value(O));
+        {error, notfound} -> []
+    end,
+    NewData = case date() of
+        Date ->
+            gen_server:call(?MODULE, {stats, {Type, Name}, Metric});
+        _ ->
+            []
+    end,
+    OldData ++ NewData.
 
 init(_) ->
     {ok, []}.
 
+handle_call({stats, Id, Metric}, _From, State) ->
+    {StartTime, Interval, Stats} = proplists:get_value(Id, State),
+    {reply, [{StartTime, Interval, proplists:get_value(Metric, Stats)}], State};
+handle_call({flush, Id = {Type, Name}}, _From, State) ->
+    {StartTime, Interval, Stats} = proplists:get_value(Id, State),
+    [
+        begin
+            B = riak_bucket(Type, Name, Metric),
+            K = riak_key(),
+            V = {StartTime, Interval, lists:reverse(Data)},
+            O = maybe_append_data(B, K, V),
+            simple_riak_pool:do(put, [O, [{w, 2}, {dw, 1}], 1000])
+        end
+        || {Metric, Data} <- Stats
+    ],
+    {reply, ok, State};
 handle_call(_Msg, _From, State) ->
     {noreply, State}.
 
@@ -56,18 +82,8 @@ handle_cast({update, Id, Update}, State) ->
         noreply,
         lists:keyreplace(Id, 1, State, {Id, {StartTime, Interval, NewStats}})
     };
-handle_cast({stop, Id = {Type, Name}}, State) ->
-    {StartTime, Interval, Stats} = proplists:get_value(Id, State),
-    [
-        begin
-            B = riak_bucket(Type, Name, Metric),
-            K = riak_key(),
-            V = {StartTime, Interval, lists:reverse(Data)},
-            O = maybe_append_data(B, K, V),
-            simple_riak_pool:do(put, [O, [{w, 2}, {dw, 1}], 1000])
-        end
-        || {Metric, Data} <- Stats
-    ],
+handle_cast({stop, Id}, State) ->
+    handle_call({flush, Id}, undefined, State),
     {noreply, lists:keydelete(Id, 1, State)};
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -92,8 +108,10 @@ maybe_append_data(B, K, V) ->
             riakc_obj:new(B, K, term_to_binary([V]))
     end.
 
+update_stats(Update, []) ->
+    [{K, [V]} || {K, V} <- Update];
 update_stats(Update, Stats) ->
-    [{K, [V | proplists:get_value(K, Stats)]} || {K, V} <- Update].
+    [{K, [proplists:get_value(K, Update) | V]} || {K, V} <- Stats].
 
 riak_bucket(Type, Name, Metric) ->
     [BT, BN, BM] = [ensure_binary(V) || V <- [Type, Name, Metric]],
@@ -119,15 +137,15 @@ ensure_binary(B) when is_binary(B) ->
     B.
 
 get_stats(Node, Params) ->
-    Date = case [lists:keyfind(K, Params) || K<-["year","month","day"]] of
+    Date = case [lists:keyfind(K, 1, Params) || K<-["year","month","day"]] of
         [false, false, false] -> date();
         L -> list_to_tuple(lists:map(fun list_to_integer/1, L))
     end,
     [
         begin
-            Segments = enodeman_stats_collector:read_day({node, Node}, M, Date),
+            Segments = read_day({node, Node}, M, Date),
             PointsPerSegment = 20 div length(Segments),
-            [reduce_stats(PointsPerSegment, Stats) || Stats <- Segments]
+            {M, [reduce_stats(PointsPerSegment, Stats) || Stats <- Segments]}
         end
         || {M, _} <- enodeman_node_metrics:all_metrics()
     ].
@@ -141,7 +159,7 @@ split_by(N, L) when length(L) > N ->
     {Pref, Suff} = lists:split(N, L),
     [Pref | split_by(N, Suff)];
 split_by(_, L) ->
-    L.
+    [L].
 
 avg_quad(L) ->
     Total = length(L),
