@@ -4,13 +4,20 @@
     start_link/0,
     node_to_pid/1,
     connect/2,
+    connect_siblings/2,
     init/1
 ]).
 
 start_link() ->
     P = supervisor:start_link({local, ?MODULE}, ?MODULE, []),
     DefaultNodes = enodeman_util:get_env(default_nodes),
-    [connect(Node, Cookie) || {Node, Cookie} <- DefaultNodes],
+    [
+        begin
+            connect(Node, Cookie),
+            connect_siblings(Node, Cookie)
+        end
+        || {Node, Cookie} <- DefaultNodes
+    ],
     P.
 
 node_to_pid(Node) when is_atom(Node) -> node_to_pid(atom_to_list(Node));
@@ -34,6 +41,12 @@ connect(Node, Cookie) ->
                 }),
             controller_by_sup(ParentPid)
     end.
+
+connect_siblings(Node, Cookie) when is_list(Node) ->
+    connect_siblings(list_to_atom(Node), Cookie);
+connect_siblings(Node, Cookie) ->
+    Nodes = rpc:call(Node, erlang, nodes, [connected]),
+    [catch enodeman_nodes:connect(N, Cookie) || N <- Nodes].
 
 controller_by_sup(ParentPid) ->
     Specs = supervisor:which_children(ParentPid),

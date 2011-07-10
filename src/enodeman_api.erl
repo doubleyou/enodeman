@@ -15,6 +15,7 @@
 connect(Node, Params) ->
     Cookie = list_to_atom(proplists:get_value("cookie", Params, "")),
     enodeman_nodes:connect(Node, Cookie),
+    enodeman_nodes:connect_siblings(Node, Cookie),
     <<"ok">>.
 
 node_status(Pid, Params) ->
