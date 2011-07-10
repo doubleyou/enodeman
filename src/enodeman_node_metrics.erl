@@ -32,6 +32,30 @@ all_metrics_ll() -> [
         <<"Number of processes on the node">>,
         {erlang, system_info, [process_count]},
         false
+    },
+    {
+        reductions,
+        <<"Total reductions number">>,
+        {enodeman_remote_module, reductions, []},
+        false
+    },
+    {
+        'io.input',
+        <<"Total incoming io">>,
+        {enodeman_remote_module, io, [1]},
+        false
+    },
+    {
+        'io.output',
+        <<"Total outgoing io">>,
+        {enodeman_remote_module, io, [2]},
+        false
+    },
+    {
+        uptime,
+        <<"Total node uptime">>,
+        {enodeman_remote_module, uptime, []},
+        false
     }
 ].
 
