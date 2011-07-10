@@ -35,6 +35,7 @@
 		if (xs[0] instanceof Array) {
 			$.each(xs, function(i, xv) {
 				self.add(title, xv, ys[i], true);
+                xs[i] = parseInt(xv) % 1000;
 			});
 			this._curIndex++;
 		} else {

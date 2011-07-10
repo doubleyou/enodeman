@@ -44,7 +44,7 @@
 			gridview: true,
 			autowidth: true,
 			colModel: columnModel,
-			//rowNum: 10,
+			rowNum: 10000,
 			//rowList: [10, 20, 30],
 			//pager: this.config.pager,
 			//viewrecords: true,

@@ -138,9 +138,12 @@ post_process_procs(Node, Procs) ->
         end || {P, Ms} <- Procs
     ].
 
-process_proc_metric(Node, Pid, {initial_call, {proc_lib, init_p, 5}}) ->
-    {dictionary, Dict} = rpc:call(Node, erlang, process_info, [Pid, dictionary]),
-    ActualInitialCall = proplists:get_value('$initial_call', Dict),
+process_proc_metric(Node, Pid, {initial_call, {proc_lib, init_p, 5} = IC}) ->
+    Dict = case rpc:call(Node, erlang, process_info, [Pid, dictionary]) of
+        {dictionary, D} -> D;
+        _ -> []
+    end,
+    ActualInitialCall = proplists:get_value('$initial_call', Dict, IC),
     process_proc_metric(Node, Pid, {initial_call, ActualInitialCall});
 process_proc_metric(_, _, {initial_call, {M, F, Arity}}) ->
     {initial_call, list_to_binary(
