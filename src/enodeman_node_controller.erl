@@ -59,7 +59,6 @@ status(Pid) ->
     gen_server:call(Pid, status).
 
 node_processes_tree(Pid) ->
-    gen_server:call(Pid, renew_tree),
     Tree = {root, gen_server:call(Pid, node_processes_tree)},
     Tree.
   
@@ -97,7 +96,7 @@ node_processes_tree_ui(Pid) ->
     ].
 
 % how it should look
-node_processes_tree_ui(dis, _Pid) -> 
+should_ui_tree() ->
     [
         {<<"id">>, <<"node01">>},
         {<<"name">>, <<"0.1">>},
@@ -165,7 +164,7 @@ init([Parent, NodeString, Cookie]) ->
                 fun (Fun, {ok, S}) -> Fun(S);
                     (_,Error) -> Error
                 end, {ok, State}, 
-                [fun renew_metrics/1, fun renew_procs/1]
+                [fun renew_metrics/1, fun renew_procs/1, fun renew_trees/1]
             ),
             case Res of
                 {ok, NewState} -> {ok, NewState};
@@ -173,13 +172,6 @@ init([Parent, NodeString, Cookie]) ->
             end
     end.
 
-handle_call(renew_tree, _From, #state{trees = []} = State) ->
-    case renew_tree(State) of
-        {ok, State1} -> {reply, ok, State1};
-        Error -> {stop, Error, Error, State}
-    end;
-handle_call(renew_tree, _From, State) ->
-    {reply, ok, State};
 handle_call(status, _From, State) ->
     {reply, State, State};
 handle_call(node_status, _From, #state{metrics=Metrics} = State) ->
@@ -206,8 +198,8 @@ handle_info(renew_procs, State) ->
         {ok, State1} -> {noreply, State1};
         Error -> {stop, Error, State}
     end;
-handle_info(renew_tree, State) ->
-    case renew_tree(State) of
+handle_info(renew_trees, State) ->
+    case renew_trees(State) of
         {ok, State1} -> {noreply, State1};
         Error -> {stop, Error, State}
     end;
@@ -245,9 +237,9 @@ renew_procs(#state{node = Node} = State) ->
             {ok, State#state{processes = post_process_procs(Node, P)}}
     end.
 
-renew_tree(#state{node = Node} = State) ->
+renew_trees(#state{node = Node} = State) ->
     Interval = enodeman_util:get_env(trees_update_interval),
-    erlang:send_after(Interval, self(), renew_tree),
+    erlang:send_after(Interval, self(), renew_trees),
     SkipApps = enodeman_util:get_env(not_monitored_apps),
     case rpc:call(Node, enodeman_remote_module, build_trees, [SkipApps]) of
         {badrpc, _} = Error -> Error;

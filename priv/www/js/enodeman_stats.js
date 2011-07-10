@@ -8,12 +8,13 @@
 				$.each(stat.data, function(j, part) {
 					xs[j] = [];
 					for (k = 0; k < part.stats.length; k++) {
-					    xs[j].push(parseInt(part.start_time + k * part.interval) % 1000);
+					    xs[j].push(part.start_time + k * part.interval);
 					}
 					ys[j] = [];
 					for (k = 0 ; k < part.stats.length; k++) {
 					    var v = part.stats[k];
-					    ys[j].push((v / (1024 * 1024)).toFixed(1));
+					    if (v > 50000) v = v.toExponential(3);
+					    ys[j].push(v);
 					}
 				});
 				var id = "metric_" + stat.metric;
@@ -21,7 +22,7 @@
 				var graph = new ENMGraph({
 					targetId: id,
 					width: 900,
-					height: 300,
+					height: 250,
 					caption: node + ": " + stat.metric/*,
 					xTranslator: function(x) {
 						return new Date(x).toTimeString();

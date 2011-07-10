@@ -3,8 +3,8 @@
 		this.offsets = {
 			top: 20,
 			right: 10,
-			bottom: 20,
-			left:60 
+			bottom: 10,
+			left: 60
 		};
 		this._curIndex = 0;
 		this.config = config;
@@ -16,7 +16,7 @@
 			this.paper = Raphael(this.config.targetId, this.config.width, this.config.height);
 			this.init();
 			this.paper.rect(0, 0, this.config.width, this.config.height);
-			this.paper.g.text(430, 15, this.config.caption);
+			this.paper.g.text(130, 10, this.config.caption);
 		}
 	};
 
@@ -32,9 +32,13 @@
 
 	ENMGraph.prototype.add = function(title, xs, ys, multipart) {
 		var self = this;
+        $.each(ys, function(i, yv) {
+            if (yv > 1000000) ys[i] = (yv / (1024 * 1024)).toFixed(1)
+        });
 		if (xs[0] instanceof Array) {
 			$.each(xs, function(i, xv) {
 				self.add(title, xv, ys[i], true);
+                xs[i] = parseInt(xv) % 1000;
 			});
 			this._curIndex++;
 		} else {
