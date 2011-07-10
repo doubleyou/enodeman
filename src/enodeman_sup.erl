@@ -26,6 +26,6 @@ start_link() ->
 init([]) ->
     Riak = ?CHILD(simple_riak_pool, worker),
     Stats = ?CHILD(enodeman_stats_collector, worker),
-    Nodes = ?CHILD(enodeman_nodes, worker),
+    Nodes = ?CHILD(enodeman_nodes, supervisor),
     Web = ?CHILD(enodeman_web, start, worker),
     {ok, { {one_for_one, 5, 10}, [Riak, Stats, Nodes, Web]} }.
