@@ -20,16 +20,16 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 new_source({Type, Name}, StartTime, Interval, Stats) ->
-    gen_server:call(
+    gen_server:cast(
         ?MODULE,
         {new_source, {Type, Name, StartTime, Interval}, Stats}
     ).
 
 update({Type, Name}, Stats) ->
-    gen_server:call(?MODULE, {update, {Type, Name}, Stats}).
+    gen_server:cast(?MODULE, {update, {Type, Name}, Stats}).
 
 remove_source({Type, Name}) ->
-    gen_server:call(?MODULE, {stop, {Type, Name}}).
+    gen_server:cast(?MODULE, {stop, {Type, Name}}).
 
 read({Type, Name}, Metric, Date) ->
     {ok, O} = simple_riak_client:do(get, [
