@@ -37,7 +37,7 @@ all_metrics_ll() -> [
 ].
 
 all_metrics() -> 
-    [ [{I,U}] || {I,_,U,_} <- all_metrics_ll() ].
+    [ {I,U} || {I,_,U,_} <- all_metrics_ll() ].
 
 get_descr() -> 
     [ 
