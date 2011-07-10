@@ -5,7 +5,8 @@
     new_source/4,
     update/2,
     remove_source/1,
-    read/3
+    read_day/3,
+    get_stats/2
 ]).
 -export([
     init/1,
@@ -31,7 +32,7 @@ update({Type, Name}, Stats) ->
 remove_source({Type, Name}) ->
     gen_server:cast(?MODULE, {stop, {Type, Name}}).
 
-read({Type, Name}, Metric, Date) ->
+read_day({Type, Name}, Metric, Date) ->
     {ok, O} = simple_riak_pool:do(get, [
             riak_bucket(Type, Name, Metric),
             riak_key(Date),
@@ -80,6 +81,8 @@ code_change(_OldVsn, State, _Extra) ->
 terminate(_Reason, _State) ->
     ok.
 
+
+
 maybe_append_data(B, K, V) ->
     case simple_riak_pool:do(get, [B, K, [{r, 1}]]) of
         {ok, O} ->
@@ -90,7 +93,7 @@ maybe_append_data(B, K, V) ->
     end.
 
 update_stats(Update, Stats) ->
-    [{K, [proplists:get_value(K, Update) | V]} || {K, V} <- Stats].
+    [{K, [V | proplists:get_value(K, Stats)]} || {K, V} <- Update].
 
 riak_bucket(Type, Name, Metric) ->
     [BT, BN, BM] = [ensure_binary(V) || V <- [Type, Name, Metric]],
@@ -114,3 +117,38 @@ ensure_binary(P) when is_pid(P) ->
     ensure_binary(pid_to_list(P));
 ensure_binary(B) when is_binary(B) ->
     B.
+
+get_stats(Node, Params) ->
+    Date = case [lists:keyfind(K, Params) || K<-["year","month","day"]] of
+        [false, false, false] -> date();
+        L -> list_to_tuple(lists:map(fun list_to_integer/1, L))
+    end,
+    [
+        begin
+            Segments = enodeman_stats_collector:read_day({node, Node}, M, Date),
+            PointsPerSegment = 20 div length(Segments),
+            [reduce_stats(PointsPerSegment, Stats) || Stats <- Segments]
+        end
+        || {M, _} <- enodeman_node_metrics:all_metrics()
+    ].
+
+reduce_stats(MaxPoints, {StartTime, Interval, Stats}) ->
+    Lists = split_by(MaxPoints, Stats),
+    NewInterval = Interval * length(Stats) / length(Lists),
+    {StartTime, NewInterval, lists:map(fun avg_quad/1, Lists)}.
+
+split_by(N, L) when length(L) > N ->
+    {Pref, Suff} = lists:split(N, L),
+    [Pref | split_by(N, Suff)];
+split_by(_, L) ->
+    L.
+
+avg_quad(L) ->
+    Total = length(L),
+    math:sqrt(lists:foldl(
+        fun(I, Acc) ->
+            Acc + I*I
+        end,
+        0,
+        L
+    ) / (Total) * (Total - 1)).

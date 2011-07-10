@@ -23,10 +23,13 @@ handle_request(Req, Path) ->
     handle_request(Req, Path, Req:parse_qs()).
 
 handle_request(Req, "/" ++ Path, Params) ->
+    %enodeman_util:info(?MODULE, "handle_request ~p (~p)", [Path, Params]),
     try
         Words = re:split(Path, "\/", [{return, list}]),
-        error_logger:format("Params:~p~n", [Params]),
         Result = process_path_request(Words, Params),
+        %enodeman_util:info(?MODULE, "Result:~p~n", [Result]),
+        %enodeman_util:info("handle_request result:~n~p~n", [Result]),
+
         Encoded = mochijson2:encode(Result),
         MaybeJSONP = case proplists:get_value("callback", Params) of
             undefined -> Encoded;
@@ -34,7 +37,7 @@ handle_request(Req, "/" ++ Path, Params) ->
         end,
         Req:ok({"application/javascript", MaybeJSONP})
     catch 
-        _:{json_encode, _} -> Req:ok("oops, wrong JSON")
+        _:{json_encode, _} -> Req:ok({"text/html", "oops, wrong JSON"})
     end.
 
 %XXX: remove debug code
