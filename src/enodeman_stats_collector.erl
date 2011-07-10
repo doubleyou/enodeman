@@ -5,7 +5,8 @@
     new_source/4,
     update/2,
     remove_source/1,
-    read/3
+    read_day/3,
+    read_period/4
 ]).
 -export([
     init/1,
@@ -31,7 +32,13 @@ update({Type, Name}, Stats) ->
 remove_source({Type, Name}) ->
     gen_server:cast(?MODULE, {stop, {Type, Name}}).
 
-read({Type, Name}, Metric, Date) ->
+read_period({Type, Name}, Metric, {StartD, StartT}, {EndD, EndT})
+                                                    when StartD == EndD ->
+    read_day({Type, Name}, Metric, StartD);
+read_period({Type, Name}, Metric, {StartD, StartT}, {EndD, EndT}) ->
+    ok.
+
+read_day({Type, Name}, Metric, Date) ->
     {ok, O} = simple_riak_pool:do(get, [
             riak_bucket(Type, Name, Metric),
             riak_key(Date),
@@ -79,6 +86,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 terminate(_Reason, _State) ->
     ok.
+
+
 
 maybe_append_data(B, K, V) ->
     case simple_riak_pool:do(get, [B, K, [{r, 1}]]) of
