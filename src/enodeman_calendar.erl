@@ -1,6 +1,6 @@
 -module(enodeman_calendar).
 -export([
-    days/2
+    days_between/2
 ]).
 
 %% TODO: use PropEr here for tests!!!

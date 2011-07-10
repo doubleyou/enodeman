@@ -163,10 +163,10 @@ split_by(_, L) ->
 
 avg_quad(L) ->
     Total = length(L),
-    math:sqrt(lists:foldl(
+    round(math:sqrt(lists:foldl(
         fun(I, Acc) ->
             Acc + I*I
         end,
         0,
         L
-    ) / (Total) * (Total - 1)).
+    ) / (Total) * (Total - 1))).
