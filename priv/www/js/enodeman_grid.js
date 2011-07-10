@@ -1,6 +1,6 @@
 (function($) {
 	window.ENMGrid = function(config) {
-		if (!config.target) return;
+		if (!config.target || !config.target.length) return;
 		this.built = false;
 		this.config = config;
 		this.config.targetId = this.config.target.attr("id");
